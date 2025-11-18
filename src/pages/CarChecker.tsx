@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Search, Plus, Settings, Loader2, Trash2 } from 'lucide-react';
+import { List, Loader2, Trash2, Settings } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { plateSchema } from '@/lib/validation';
+import { PlateInput } from '@/components/PlateInput';
 
 interface CarPlate {
   id: string;
@@ -21,10 +21,10 @@ export default function CarChecker() {
   const { user } = useTelegram();
   const navigate = useNavigate();
   const [plates, setPlates] = useState<CarPlate[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [newPlate, setNewPlate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showPlates, setShowPlates] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const loadPlates = async () => {
@@ -80,9 +80,8 @@ export default function CarChecker() {
   const handleAddPlate = async () => {
     if (!newPlate.trim() || !user) return;
 
-    const plateNumber = newPlate.trim().toUpperCase();
+    const plateNumber = newPlate.trim().toUpperCase().replace(/\s/g, '');
 
-    // Validate plate number
     const validation = plateSchema.safeParse({ plate_number: plateNumber });
     if (!validation.success) {
       toast.error('Ошибка валидации', {
@@ -94,7 +93,6 @@ export default function CarChecker() {
     setIsLoading(true);
 
     try {
-      // Check if plate already exists
       const { data: existing } = await supabase
         .from('car_plates')
         .select('id, last_attempt_at, attempt_count')
@@ -102,14 +100,12 @@ export default function CarChecker() {
         .maybeSingle();
 
       if (existing) {
-        // Log failed attempt
         await supabase.from('plate_addition_attempts').insert({
           plate_number: plateNumber,
           attempted_by_telegram_id: user.id.toString(),
           success: false,
         });
 
-        // Update last attempt
         await supabase
           .from('car_plates')
           .update({
@@ -126,15 +122,15 @@ export default function CarChecker() {
         return;
       }
 
-      // Add new plate
-      const { error } = await supabase.from('car_plates').insert({
-        plate_number: plateNumber,
-        added_by_telegram_id: user.id.toString(),
-      });
+      const { error: insertError } = await supabase
+        .from('car_plates')
+        .insert({
+          plate_number: plateNumber,
+          added_by_telegram_id: user.id.toString(),
+        });
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
-      // Log successful addition
       await supabase.from('plate_addition_attempts').insert({
         plate_number: plateNumber,
         attempted_by_telegram_id: user.id.toString(),
@@ -143,36 +139,34 @@ export default function CarChecker() {
 
       toast.success('Номер добавлен');
       setNewPlate('');
-    } catch (error: any) {
-      toast.error(error.message || 'Ошибка добавления');
+    } catch (error) {
+      console.error('Error adding plate:', error);
+      toast.error('Ошибка при добавлении номера');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeletePlate = async (plateId: string) => {
-    setDeletingIds(prev => new Set([...prev, plateId]));
+  const handleDeletePlate = async (id: string) => {
+    setDeletingIds(prev => new Set(prev).add(id));
     try {
-      const { error } = await supabase.from('car_plates').delete().eq('id', plateId);
+      const { error } = await supabase
+        .from('car_plates')
+        .delete()
+        .eq('id', id);
+
       if (error) throw error;
       toast.success('Номер удален');
-    } catch (error: any) {
-      toast.error(error.message || 'Ошибка удаления');
+    } catch (error) {
+      console.error('Error deleting plate:', error);
+      toast.error('Ошибка при удалении номера');
     } finally {
       setDeletingIds(prev => {
         const newSet = new Set(prev);
-        newSet.delete(plateId);
+        newSet.delete(id);
         return newSet;
       });
     }
-  };
-
-  const filteredPlates = plates.filter((plate) =>
-    plate.plate_number.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const isPlateInList = (query: string) => {
-    return plates.some((plate) => plate.plate_number.toLowerCase() === query.toLowerCase());
   };
 
   const canDeletePlate = (plate: CarPlate) => {
@@ -181,97 +175,105 @@ export default function CarChecker() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">carNumCheck</h1>
-          {isAdmin && (
-            <Button variant="ghost" size="icon" onClick={() => navigate('/admin')}>
-              <Settings className="h-5 w-5" />
-            </Button>
-          )}
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-lg">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            Plate Registry 🇵🇱
+          </h1>
+          <p className="text-muted-foreground">Enter a Polish license plate number</p>
         </div>
 
-        <Card className="p-4 space-y-4">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Поиск номера..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+        <Card className="p-6 shadow-lg">
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">
+                License Plate Number
+              </label>
+              <PlateInput
+                value={newPlate}
+                onChange={setNewPlate}
+                placeholder="SS 4657C"
               />
             </div>
-          </div>
 
-          {searchQuery && (
-            <div className={`text-center p-4 rounded-lg ${
-              isPlateInList(searchQuery)
-                ? 'bg-destructive/20 text-destructive'
-                : 'bg-green-500/20 text-green-400'
-            }`}>
-              {isPlateInList(searchQuery) ? (
-                <div className="font-bold">⚠️ НОМЕР В СПИСКЕ</div>
+            <Button
+              onClick={handleAddPlate}
+              disabled={isLoading || !newPlate.trim()}
+              className="w-full h-12 text-base font-medium"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Adding...
+                </>
               ) : (
-                <div className="font-bold">✓ Номер чист</div>
+                'Add Plate'
               )}
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-4 space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Добавить новый номер"
-              value={newPlate}
-              onChange={(e) => setNewPlate(e.target.value.toUpperCase())}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddPlate()}
-            />
-            <Button onClick={handleAddPlate} disabled={isLoading || !newPlate.trim()}>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             </Button>
-          </div>
-        </Card>
 
-        <div>
-          <h2 className="text-lg font-bold mb-3">
-            Список номеров ({filteredPlates.length})
-          </h2>
-          <div className="space-y-2">
-            {filteredPlates.map((plate) => (
-              <Card key={plate.id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-mono font-bold text-lg">{plate.plate_number}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(plate.created_at).toLocaleDateString('ru-RU')}
-                    </div>
-                  </div>
-                  {canDeletePlate(plate) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeletePlate(plate.id)}
-                      disabled={deletingIds.has(plate.id)}
-                    >
-                      {deletingIds.has(plate.id) ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            ))}
-            {filteredPlates.length === 0 && (
-              <div className="text-center text-muted-foreground py-8">
-                {searchQuery ? 'Ничего не найдено' : 'Список пуст'}
-              </div>
+            <Button
+              onClick={() => setShowPlates(!showPlates)}
+              variant="outline"
+              className="w-full h-12 text-base font-medium"
+            >
+              <List className="mr-2 h-5 w-5" />
+              {showPlates ? 'Hide' : 'View'} Saved Plates
+            </Button>
+
+            {isAdmin && (
+              <Button
+                onClick={() => navigate('/admin')}
+                variant="outline"
+                className="w-full h-12 text-base font-medium"
+              >
+                <Settings className="mr-2 h-5 w-5" />
+                Admin Panel
+              </Button>
             )}
           </div>
-        </div>
+
+          <div className="mt-4 text-xs text-muted-foreground">
+            <strong>How to use:</strong> Enter 2-3 letters, then numbers and optionally a final letter (e.g., SR 4657C)
+          </div>
+        </Card>
+
+        {showPlates && (
+          <Card className="mt-4 p-6 shadow-lg">
+            <h3 className="font-semibold text-lg mb-4">Saved Plates ({plates.length})</h3>
+            {plates.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">No plates saved yet</p>
+            ) : (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {plates.map((plate) => (
+                  <div
+                    key={plate.id}
+                    className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+                  >
+                    <span className="font-mono font-semibold text-foreground">
+                      {plate.plate_number}
+                    </span>
+                    {canDeletePlate(plate) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeletePlate(plate.id)}
+                        disabled={deletingIds.has(plate.id)}
+                        className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        {deletingIds.has(plate.id) ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
       </div>
     </div>
   );
