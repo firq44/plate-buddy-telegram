@@ -9,6 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { plateSchema } from '@/lib/validation';
 import { PlateInput } from '@/components/PlateInput';
 import { useUserAccess } from '@/hooks/useUserAccess';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 
 interface CarPlate {
   id: string;
@@ -143,8 +145,15 @@ export default function CarChecker() {
   };
 
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-gradient-to-br from-background to-muted/20">
-      <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-x-hidden w-full">
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-gradient-to-br from-background to-muted/20">
+        {isAdmin && <AppSidebar isAdmin={isAdmin} />}
+        <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-x-hidden w-full">
+          {isAdmin && (
+            <div className="fixed top-4 right-4 z-50">
+              <SidebarTrigger className="h-12 w-12 bg-card hover:bg-accent shadow-lg" />
+            </div>
+          )}
           <div className="w-full max-w-lg px-2">
             <div className="text-center mb-8">
               <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
@@ -201,6 +210,7 @@ export default function CarChecker() {
             </Card>
           </div>
         </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 }
