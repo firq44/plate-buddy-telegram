@@ -8,6 +8,9 @@ import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { plateSchema } from '@/lib/validation';
 import { PlateInput } from '@/components/PlateInput';
+import { useUserAccess } from '@/hooks/useUserAccess';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 
 interface CarPlate {
   id: string;
@@ -19,6 +22,7 @@ interface CarPlate {
 
 export default function CarChecker() {
   const { user } = useTelegram();
+  const { isAdmin } = useUserAccess();
   const navigate = useNavigate();
   const [plates, setPlates] = useState<CarPlate[]>([]);
   const [newPlate, setNewPlate] = useState('');

@@ -5,6 +5,9 @@ import { toast } from 'sonner';
 import { ArrowLeft, Download, Plus, Loader2, Trash2 } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
+import { useUserAccess } from '@/hooks/useUserAccess';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 
 interface CarPlate {
   id: string;
@@ -18,6 +21,7 @@ interface CarPlate {
 
 export default function PlatesList() {
   const { user } = useTelegram();
+  const { isAdmin: userIsAdmin } = useUserAccess();
   const navigate = useNavigate();
   const [plates, setPlates] = useState<CarPlate[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -258,14 +262,10 @@ export default function PlatesList() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Attempts:</span>
                       <span className="text-red-600 font-bold">{plate.attempt_count}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+        </div>
           </div>
-        )}
+        </main>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

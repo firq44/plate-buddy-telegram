@@ -7,6 +7,9 @@ import { toast } from 'sonner';
 import { X, Loader2, UserPlus, Shield, Users, Download } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
+import { useUserAccess } from '@/hooks/useUserAccess';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 
 interface User {
   id: string;
@@ -27,6 +30,7 @@ interface AccessRequest {
 
 export default function Admin() {
   const { user: telegramUser } = useTelegram();
+  const { isAdmin } = useUserAccess();
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
@@ -487,7 +491,9 @@ export default function Admin() {
             )}
           </div>
         </Card>
+          </div>
+        </main>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
