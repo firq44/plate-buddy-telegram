@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { X, Search, Loader2 } from 'lucide-react';
+import { X, Search, Loader2, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ADMIN_TELEGRAM_IDS } from '@/lib/constants';
+import { useTelegram } from '@/contexts/TelegramContext';
 
 interface User {
   id: string;
@@ -25,6 +26,7 @@ interface AccessRequest {
 }
 
 export default function Admin() {
+  const { user: telegramUser } = useTelegram();
   const [users, setUsers] = useState<User[]>([]);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
   const [telegramId, setTelegramId] = useState('');
@@ -32,6 +34,7 @@ export default function Admin() {
   const [role, setRole] = useState<'user' | 'admin'>('user');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   const loadData = async () => {
     try {
@@ -110,6 +113,73 @@ export default function Admin() {
     }
   };
 
+  const handlePromoteUser = async (userId: string, currentRole: 'user' | 'admin') => {
+    const newRole = currentRole === 'user' ? 'admin' : 'user';
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ role: newRole })
+        .eq('id', userId);
+
+      if (error) throw error;
+      toast.success(newRole === 'admin' ? 'Пользователь повышен до админа' : 'Админ понижен до пользователя');
+    } catch (error: any) {
+      toast.error(error.message || 'Ошибка изменения роли');
+    }
+  };
+
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    try {
+      const { data, error } = await supabase.rpc('get_plate_export_data');
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        toast.error('Нет данных для экспорта');
+        return;
+      }
+
+      // Create CSV content
+      const headers = [
+        'Номер',
+        'Добавил (ID)',
+        'Username',
+        'Дата добавления',
+        'Последняя попытка',
+        'Попыток добавить',
+      ];
+
+      const csvContent = [
+        headers.join(','),
+        ...data.map((row: any) =>
+          [
+            row.plate_number,
+            row.added_by_telegram_id,
+            row.added_by_username || 'N/A',
+            new Date(row.created_at).toLocaleString('ru-RU'),
+            row.last_attempt_at ? new Date(row.last_attempt_at).toLocaleString('ru-RU') : 'N/A',
+            row.attempt_count,
+          ].join(',')
+        ),
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `car_plates_export_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+
+      toast.success('CSV файл скачан');
+    } catch (error: any) {
+      console.error('Export error:', error);
+      toast.error(error.message || 'Ошибка экспорта');
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
   const handleApproveRequest = async (request: AccessRequest) => {
     try {
       // Add user
@@ -159,14 +229,38 @@ export default function Admin() {
   const admins = filteredUsers.filter((u) => u.role === 'admin');
   const regularUsers = filteredUsers.filter((u) => u.role === 'user');
 
+  const canModifyUser = (userToModify: User) => {
+    // Main admin can modify anyone
+    if (telegramUser && ADMIN_TELEGRAM_IDS.includes(telegramUser.id.toString())) {
+      return true;
+    }
+    // Regular admins cannot modify main admin or other admins
+    return !ADMIN_TELEGRAM_IDS.includes(userToModify.telegram_id) && userToModify.role !== 'admin';
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Админ-панель</h1>
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={exportingCsv}
+            >
+              {exportingCsv ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Экспорт CSV
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         <Card className="p-4 space-y-4">
@@ -220,9 +314,22 @@ export default function Admin() {
                   <div className="font-bold">{user.telegram_id}</div>
                   {user.username && <div className="text-sm text-muted-foreground">@{user.username}</div>}
                 </div>
-                <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                  Удалить
-                </Button>
+                <div className="flex gap-2">
+                  {canModifyUser(user) && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePromoteUser(user.id, user.role)}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                        Удалить
+                      </Button>
+                    </>
+                  )}
+                </div>
               </Card>
             ))}
           </div>
@@ -275,7 +382,7 @@ export default function Admin() {
         </div>
 
         <div>
-          <h2 className="text-xl font-bold mb-3">Пользователи (whitelist)</h2>
+          <h2 className="text-xl font-bold mb-3">Пользователи</h2>
           <div className="space-y-2">
             {regularUsers.map((user) => (
               <Card key={user.id} className="p-4 flex items-center justify-between">
@@ -283,9 +390,22 @@ export default function Admin() {
                   <div className="font-bold">{user.telegram_id}</div>
                   {user.username && <div className="text-sm text-muted-foreground">@{user.username}</div>}
                 </div>
-                <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                  Удалить
-                </Button>
+                <div className="flex gap-2">
+                  {canModifyUser(user) && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePromoteUser(user.id, user.role)}
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                        Удалить
+                      </Button>
+                    </>
+                  )}
+                </div>
               </Card>
             ))}
           </div>

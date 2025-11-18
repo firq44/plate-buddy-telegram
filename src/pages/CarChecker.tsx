@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Search, Plus, Settings, Loader2 } from 'lucide-react';
+import { Search, Plus, Settings, Loader2, Trash2 } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { isMainAdmin } from '@/lib/constants';
@@ -25,6 +25,7 @@ export default function CarChecker() {
   const [newPlate, setNewPlate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const loadPlates = async () => {
     try {
@@ -76,14 +77,56 @@ export default function CarChecker() {
   const handleAddPlate = async () => {
     if (!newPlate.trim() || !user) return;
 
+    const plateNumber = newPlate.trim().toUpperCase();
     setIsLoading(true);
+
     try {
+      // Check if plate already exists
+      const { data: existing } = await supabase
+        .from('car_plates')
+        .select('id, last_attempt_at, attempt_count')
+        .eq('plate_number', plateNumber)
+        .maybeSingle();
+
+      if (existing) {
+        // Log failed attempt
+        await supabase.from('plate_addition_attempts').insert({
+          plate_number: plateNumber,
+          attempted_by_telegram_id: user.id.toString(),
+          success: false,
+        });
+
+        // Update last attempt
+        await supabase
+          .from('car_plates')
+          .update({
+            last_attempt_at: new Date().toISOString(),
+            attempt_count: (existing.attempt_count || 0) + 1,
+          })
+          .eq('id', existing.id);
+
+        toast.error('Номер уже существует', {
+          description: 'Этот номер уже добавлен в базу',
+        });
+        setNewPlate('');
+        setIsLoading(false);
+        return;
+      }
+
+      // Add new plate
       const { error } = await supabase.from('car_plates').insert({
-        plate_number: newPlate.trim().toUpperCase(),
+        plate_number: plateNumber,
         added_by_telegram_id: user.id.toString(),
       });
 
       if (error) throw error;
+
+      // Log successful addition
+      await supabase.from('plate_addition_attempts').insert({
+        plate_number: plateNumber,
+        attempted_by_telegram_id: user.id.toString(),
+        success: true,
+      });
 
       toast.success('Номер добавлен');
       setNewPlate('');
@@ -94,12 +137,34 @@ export default function CarChecker() {
     }
   };
 
+  const handleDeletePlate = async (plateId: string) => {
+    setDeletingIds(prev => new Set([...prev, plateId]));
+    try {
+      const { error } = await supabase.from('car_plates').delete().eq('id', plateId);
+      if (error) throw error;
+      toast.success('Номер удален');
+    } catch (error: any) {
+      toast.error(error.message || 'Ошибка удаления');
+    } finally {
+      setDeletingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(plateId);
+        return newSet;
+      });
+    }
+  };
+
   const filteredPlates = plates.filter((plate) =>
     plate.plate_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const isPlateInList = (query: string) => {
     return plates.some((plate) => plate.plate_number.toLowerCase() === query.toLowerCase());
+  };
+
+  const canDeletePlate = (plate: CarPlate) => {
+    if (!user) return false;
+    return isAdmin || plate.added_by_telegram_id === user.id.toString();
   };
 
   return (
@@ -163,9 +228,27 @@ export default function CarChecker() {
           <div className="space-y-2">
             {filteredPlates.map((plate) => (
               <Card key={plate.id} className="p-4">
-                <div className="font-mono font-bold text-lg">{plate.plate_number}</div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(plate.created_at).toLocaleDateString('ru-RU')}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-mono font-bold text-lg">{plate.plate_number}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(plate.created_at).toLocaleDateString('ru-RU')}
+                    </div>
+                  </div>
+                  {canDeletePlate(plate) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeletePlate(plate.id)}
+                      disabled={deletingIds.has(plate.id)}
+                    >
+                      {deletingIds.has(plate.id) ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
                 </div>
               </Card>
             ))}
