@@ -6,8 +6,8 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { X, Search, Loader2, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ADMIN_TELEGRAM_IDS } from '@/lib/constants';
 import { useTelegram } from '@/contexts/TelegramContext';
+import { userSchema } from '@/lib/validation';
 
 interface User {
   id: string;
@@ -49,13 +49,7 @@ export default function Admin() {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      // Filter out main admin from the list (hidden from view)
-      if (usersData) {
-        const filteredUsers = usersData.filter(
-          (user) => !ADMIN_TELEGRAM_IDS.includes(user.telegram_id)
-        );
-        setUsers(filteredUsers);
-      }
+      if (usersData) setUsers(usersData);
       if (requestsData) setAccessRequests(requestsData);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -82,15 +76,42 @@ export default function Admin() {
       return;
     }
 
+    // Validate input
+    const validation = userSchema.safeParse({
+      telegram_id: telegramId.trim(),
+      username: username.trim() || undefined,
+    });
+
+    if (!validation.success) {
+      toast.error('Ошибка валидации', {
+        description: validation.error.issues[0].message,
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const { error } = await supabase.from('users').insert({
-        telegram_id: telegramId,
-        username: username || null,
-        role,
-      });
+      // Insert into users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .insert({
+          telegram_id: validation.data.telegram_id,
+          username: validation.data.username || null,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (userError) throw userError;
+
+      // Insert role into user_roles table
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: userData.id,
+          role: role,
+        });
+
+      if (roleError) throw roleError;
 
       toast.success('Пользователь добавлен');
       setTelegramId('');
@@ -116,12 +137,25 @@ export default function Admin() {
   const handlePromoteUser = async (userId: string, currentRole: 'user' | 'admin') => {
     const newRole = currentRole === 'user' ? 'admin' : 'user';
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ role: newRole })
-        .eq('id', userId);
-
-      if (error) throw error;
+      if (newRole === 'admin') {
+        // Add admin role
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: 'admin',
+          });
+        if (error) throw error;
+      } else {
+        // Remove admin role
+        const { error } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId)
+          .eq('role', 'admin');
+        if (error) throw error;
+      }
+      
       toast.success(newRole === 'admin' ? 'Пользователь повышен до админа' : 'Админ понижен до пользователя');
     } catch (error: any) {
       toast.error(error.message || 'Ошибка изменения роли');
@@ -183,14 +217,27 @@ export default function Admin() {
   const handleApproveRequest = async (request: AccessRequest) => {
     try {
       // Add user
-      const { error: userError } = await supabase.from('users').insert({
-        telegram_id: request.telegram_id,
-        username: request.username,
-        first_name: request.first_name,
-        role: 'user',
-      });
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .insert({
+          telegram_id: request.telegram_id,
+          username: request.username,
+          first_name: request.first_name,
+        })
+        .select()
+        .single();
 
       if (userError) throw userError;
+
+      // Add user role (default to 'user')
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: userData.id,
+          role: 'user',
+        });
+
+      if (roleError) throw roleError;
 
       // Update request status
       const { error: requestError } = await supabase
@@ -228,15 +275,6 @@ export default function Admin() {
 
   const admins = filteredUsers.filter((u) => u.role === 'admin');
   const regularUsers = filteredUsers.filter((u) => u.role === 'user');
-
-  const canModifyUser = (userToModify: User) => {
-    // Main admin can modify anyone
-    if (telegramUser && ADMIN_TELEGRAM_IDS.includes(telegramUser.id.toString())) {
-      return true;
-    }
-    // Regular admins cannot modify main admin or other admins
-    return !ADMIN_TELEGRAM_IDS.includes(userToModify.telegram_id) && userToModify.role !== 'admin';
-  };
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -315,20 +353,16 @@ export default function Admin() {
                   {user.username && <div className="text-sm text-muted-foreground">@{user.username}</div>}
                 </div>
                 <div className="flex gap-2">
-                  {canModifyUser(user) && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePromoteUser(user.id, user.role)}
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                        Удалить
-                      </Button>
-                    </>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePromoteUser(user.id, user.role)}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                    Удалить
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -391,20 +425,16 @@ export default function Admin() {
                   {user.username && <div className="text-sm text-muted-foreground">@{user.username}</div>}
                 </div>
                 <div className="flex gap-2">
-                  {canModifyUser(user) && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePromoteUser(user.id, user.role)}
-                      >
-                        <ChevronUp className="h-4 w-4" />
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                        Удалить
-                      </Button>
-                    </>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePromoteUser(user.id, user.role)}
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                    Удалить
+                  </Button>
                 </div>
               </Card>
             ))}

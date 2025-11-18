@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Search, Plus, Settings, Loader2, Trash2 } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
-import { isMainAdmin } from '@/lib/constants';
+import { plateSchema } from '@/lib/validation';
 
 interface CarPlate {
   id: string;
@@ -45,20 +45,23 @@ export default function CarChecker() {
     const checkAdmin = async () => {
       if (!user) return;
 
-      // Check if main admin
-      if (isMainAdmin(user.id)) {
-        setIsAdmin(true);
-        return;
-      }
-
-      // Check in database
-      const { data } = await supabase
+      // Check if user has admin role in user_roles table
+      const { data: userData } = await supabase
         .from('users')
-        .select('role')
+        .select('id')
         .eq('telegram_id', user.id.toString())
         .maybeSingle();
 
-      setIsAdmin(data?.role === 'admin');
+      if (!userData) return;
+
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userData.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      setIsAdmin(!!roleData);
     };
 
     checkAdmin();
@@ -78,6 +81,16 @@ export default function CarChecker() {
     if (!newPlate.trim() || !user) return;
 
     const plateNumber = newPlate.trim().toUpperCase();
+
+    // Validate plate number
+    const validation = plateSchema.safeParse({ plate_number: plateNumber });
+    if (!validation.success) {
+      toast.error('Ошибка валидации', {
+        description: validation.error.issues[0].message,
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {

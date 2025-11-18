@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegram } from '@/contexts/TelegramContext';
-import { isMainAdmin } from '@/lib/constants';
 
 export type AccessStatus = 'loading' | 'approved' | 'pending' | 'rejected' | 'no-request';
 
@@ -18,24 +17,27 @@ export const useUserAccess = () => {
 
     const checkAccess = async () => {
       try {
-        // Check if user is main admin (hardcoded)
-        if (isMainAdmin(user.id)) {
-          setIsAdmin(true);
-          setStatus('approved');
-          return;
-        }
-
-        // Check if user is approved
+        // Check if user exists and get their ID
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('role')
+          .select('id')
           .eq('telegram_id', user.id.toString())
           .maybeSingle();
 
         if (userError) throw userError;
 
         if (userData) {
-          setIsAdmin(userData.role === 'admin');
+          // Check if user has admin role
+          const { data: roleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userData.id)
+            .eq('role', 'admin')
+            .maybeSingle();
+
+          if (roleError) throw roleError;
+
+          setIsAdmin(!!roleData);
           setStatus('approved');
           return;
         }

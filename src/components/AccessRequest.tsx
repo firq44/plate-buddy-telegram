@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { isMainAdmin } from '@/lib/constants';
+import { accessRequestSchema } from '@/lib/validation';
 
 export const AccessRequest = () => {
   const { user } = useTelegram();
@@ -14,22 +14,29 @@ export const AccessRequest = () => {
   const handleRequestAccess = async () => {
     if (!user) return;
 
-    // Main admins shouldn't request access
-    if (isMainAdmin(user.id)) {
-      toast.error('Ошибка', {
-        description: 'Доступ уже предоставлен',
-      });
-      return;
-    }
-
     setIsSubmitting(true);
     try {
+      // Validate input data
+      const requestData = {
+        telegram_id: user.id.toString(),
+        username: user.username,
+        first_name: user.first_name,
+      };
+
+      const validation = accessRequestSchema.safeParse(requestData);
+      if (!validation.success) {
+        toast.error('Ошибка валидации', {
+          description: validation.error.issues[0].message,
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('access_requests')
         .insert({
-          telegram_id: user.id.toString(),
-          username: user.username,
-          first_name: user.first_name,
+          telegram_id: validation.data.telegram_id,
+          username: validation.data.username || null,
+          first_name: validation.data.first_name || null,
         });
 
       if (error) throw error;
