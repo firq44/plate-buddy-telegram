@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { X, Loader2, UserPlus, Shield, Users, Download } from 'lucide-react';
+import { X, Loader2, UserPlus, Shield, Users, Download, List } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { useUserAccess } from '@/hooks/useUserAccess';
@@ -28,12 +28,22 @@ interface AccessRequest {
   status: string;
 }
 
+interface PlateData {
+  plate_number: string;
+  added_by_telegram_id: string;
+  added_by_username: string | null;
+  created_at: string;
+  attempt_count: number;
+  last_attempt_at?: string | null;
+}
+
 export default function Admin() {
   const { user: telegramUser } = useTelegram();
   const { isAdmin } = useUserAccess();
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
+  const [plates, setPlates] = useState<PlateData[]>([]);
   const [telegramId, setTelegramId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -99,8 +109,11 @@ export default function Admin() {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
+      const { data: platesData } = await supabase.rpc('get_plate_export_data');
+
       if (usersWithRoles) setUsers(usersWithRoles);
       if (requestsData) setAccessRequests(requestsData);
+      if (platesData) setPlates(platesData);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -255,7 +268,7 @@ export default function Admin() {
     try {
       const { error } = await supabase
         .from('access_requests')
-        .update({ status: 'rejected' })
+        .delete()
         .eq('id', requestId);
 
       if (error) throw error;
@@ -493,6 +506,61 @@ export default function Admin() {
                 {users.length === 0 && (
                   <div className="text-center text-muted-foreground py-8">
                     Нет пользователей
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <List className="h-5 w-5 text-accent" />
+                  Все номера
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportPlates}
+                  disabled={exportingCsv}
+                >
+                  {exportingCsv ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Экспорт CSV
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {plates.length > 0 ? (
+                  <div className="space-y-2">
+                    {plates.map((plate, index) => (
+                      <div
+                        key={`${plate.plate_number}-${index}`}
+                        className="flex items-center justify-between p-4 bg-secondary rounded-lg"
+                      >
+                        <div className="flex-1">
+                          <div className="font-semibold text-foreground">
+                            {plate.plate_number}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Добавил: {plate.added_by_username || plate.added_by_telegram_id}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(plate.created_at).toLocaleString('ru-RU')}
+                          </div>
+                          {plate.attempt_count > 1 && (
+                            <div className="text-xs text-amber-600">
+                              Попыток добавить: {plate.attempt_count}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    Нет номеров
                   </div>
                 )}
               </div>
