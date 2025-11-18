@@ -27,6 +27,8 @@ export const useUserAccess = () => {
         if (userError) throw userError;
 
         if (userData) {
+          console.log('User data found:', userData);
+          
           // Check if user has admin role
           const { data: roleData, error: roleError } = await supabase
             .from('user_roles')
@@ -35,9 +37,13 @@ export const useUserAccess = () => {
             .eq('role', 'admin')
             .maybeSingle();
 
+          console.log('Role data:', roleData, 'Role error:', roleError);
+
           if (roleError) throw roleError;
 
-          setIsAdmin(!!roleData);
+          const adminStatus = !!roleData;
+          console.log('Setting isAdmin to:', adminStatus);
+          setIsAdmin(adminStatus);
           setStatus('approved');
           return;
         }
