@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Search, Plus, Settings, Loader2 } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
+import { isMainAdmin } from '@/lib/constants';
 
 interface CarPlate {
   id: string;
@@ -43,6 +44,13 @@ export default function CarChecker() {
     const checkAdmin = async () => {
       if (!user) return;
 
+      // Check if main admin
+      if (isMainAdmin(user.id)) {
+        setIsAdmin(true);
+        return;
+      }
+
+      // Check in database
       const { data } = await supabase
         .from('users')
         .select('role')
