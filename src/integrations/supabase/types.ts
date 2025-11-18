@@ -127,7 +127,6 @@ export type Database = {
           created_at: string
           first_name: string | null
           id: string
-          role: Database["public"]["Enums"]["user_role"]
           telegram_id: string
           updated_at: string
           username: string | null
@@ -136,7 +135,6 @@ export type Database = {
           created_at?: string
           first_name?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["user_role"]
           telegram_id: string
           updated_at?: string
           username?: string | null
@@ -145,7 +143,6 @@ export type Database = {
           created_at?: string
           first_name?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["user_role"]
           telegram_id?: string
           updated_at?: string
           username?: string | null
