@@ -14,7 +14,7 @@ export const PlateInput = ({ value, onChange, placeholder, className }: PlateInp
   };
 
   return (
-    <div className={cn("flex items-stretch bg-white rounded-lg overflow-hidden border border-gray-200", className)}>
+    <div className={cn("flex items-stretch bg-white rounded-lg overflow-hidden", className)}>
       {/* PL Badge */}
       <div className="bg-[#4169E1] text-white px-4 flex flex-col items-center justify-center gap-0.5">
         <span className="text-lg">🇵🇱</span>
