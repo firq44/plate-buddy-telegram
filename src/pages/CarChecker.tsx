@@ -74,6 +74,9 @@ export default function CarChecker() {
         .maybeSingle();
 
       if (existing) {
+        const newAttemptCount = (existing.attempt_count || 0) + 1;
+        const now = new Date();
+        
         await supabase.from('plate_addition_attempts').insert({
           plate_number: plateNumber,
           attempted_by_telegram_id: user.id.toString(),
@@ -83,18 +86,18 @@ export default function CarChecker() {
         await supabase
           .from('car_plates')
           .update({
-            last_attempt_at: new Date().toISOString(),
-            attempt_count: (existing.attempt_count || 0) + 1,
+            last_attempt_at: now.toISOString(),
+            attempt_count: newAttemptCount,
           })
           .eq('id', existing.id);
 
         const addedDate = new Date(existing.created_at).toLocaleDateString('ru-RU');
         const lastAttemptDate = existing.last_attempt_at 
           ? new Date(existing.last_attempt_at).toLocaleDateString('ru-RU')
-          : 'Нет данных';
+          : now.toLocaleDateString('ru-RU');
         
         toast.error('Номер уже добавлен', {
-          description: `Добавлен: ${addedDate}\nПопыток: ${existing.attempt_count + 1}\nПоследняя попытка: ${lastAttemptDate}`,
+          description: `Добавлен: ${addedDate}\nПопыток: ${newAttemptCount}\nПоследняя попытка: ${lastAttemptDate}`,
           duration: 5000,
         });
         setNewPlate('');
