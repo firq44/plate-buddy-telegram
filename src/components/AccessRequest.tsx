@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { isMainAdmin } from '@/lib/constants';
 
 export const AccessRequest = () => {
   const { user } = useTelegram();
@@ -12,6 +13,14 @@ export const AccessRequest = () => {
 
   const handleRequestAccess = async () => {
     if (!user) return;
+
+    // Main admins shouldn't request access
+    if (isMainAdmin(user.id)) {
+      toast.error('Ошибка', {
+        description: 'Доступ уже предоставлен',
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
