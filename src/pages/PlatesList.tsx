@@ -191,9 +191,10 @@ export default function PlatesList() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {plates.map((plate) => {
-              const parts = plate.plate_number.split(' ');
-              const letters = parts[0] || '';
-              const numbers = parts.slice(1).join(' ') || '';
+              // Split plate into letters and numbers with space
+              const match = plate.plate_number.match(/^([A-Z]{2,3})(.+)$/);
+              const letters = match ? match[1] : '';
+              const numbers = match ? match[2] : '';
               
               return (
                 <div
@@ -206,7 +207,7 @@ export default function PlatesList() {
                         <span className="text-base">🇵🇱</span>
                         <span className="text-xs font-bold leading-none">PL</span>
                       </div>
-                      <div className="px-3 py-2 bg-[#E8EDF2] flex items-center gap-1">
+                      <div className="px-3 py-2 bg-[#E8EDF2] flex items-center gap-2">
                         <span className="text-lg font-bold text-black tracking-wider">{letters}</span>
                         <span className="text-lg font-bold text-black tracking-wider">{numbers}</span>
                       </div>
