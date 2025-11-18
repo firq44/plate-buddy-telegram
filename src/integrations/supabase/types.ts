@@ -106,7 +106,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_telegram_id: { Args: never; Returns: string }
+      is_authenticated_telegram_user: { Args: never; Returns: boolean }
     }
     Enums: {
       request_status: "pending" | "approved" | "rejected"
