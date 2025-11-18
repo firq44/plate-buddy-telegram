@@ -145,62 +145,70 @@ export default function CarChecker() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
-            Plate Registry 🇵🇱
-          </h1>
-          <p className="text-muted-foreground">Enter a Polish license plate number</p>
-        </div>
-
-        <Card className="p-6 shadow-lg border-0">
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">
-                License Plate Number
-              </label>
-              <PlateInput
-                value={newPlate}
-                onChange={setNewPlate}
-                placeholder="SS 4657C"
-              />
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted/20">
+        <AppSidebar isAdmin={isAdmin} />
+        <main className="flex-1 flex flex-col items-center justify-center p-4">
+          <div className="absolute top-4 right-4 z-50">
+            <SidebarTrigger className="h-10 w-10" />
+          </div>
+          <div className="w-full max-w-lg">
+            <div className="text-center mb-8">
+              <h1 className="text-4xl font-bold text-foreground mb-2">
+                Plate Registry 🇵🇱
+              </h1>
+              <p className="text-muted-foreground">Enter a Polish license plate number</p>
             </div>
 
-            <Button
-              onClick={handleAddPlate}
-              disabled={isLoading || !newPlate.trim()}
-              className={`w-full h-12 text-base font-medium text-white transition-colors ${
-                newPlate.trim() 
-                  ? 'bg-[#0052CC] hover:bg-[#0747A6]' 
-                  : 'bg-[#B3D4F5] cursor-not-allowed'
-              }`}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                'Add Plate'
-              )}
-            </Button>
+            <Card className="p-6 shadow-lg border-0">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">
+                    License Plate Number
+                  </label>
+                  <PlateInput
+                    value={newPlate}
+                    onChange={setNewPlate}
+                    placeholder="SS 4657C"
+                  />
+                </div>
 
-            <Button
-              onClick={() => navigate('/plates')}
-              variant="outline"
-              className="w-full h-12 text-base font-medium bg-[#E8EDF2] hover:bg-[#D8E0E8] text-foreground border-0"
-            >
-              <List className="mr-2 h-5 w-5" />
-              View Saved Plates
-            </Button>
-          </div>
+                <Button
+                  onClick={handleAddPlate}
+                  disabled={isLoading || !newPlate.trim()}
+                  className={`w-full h-12 text-base font-medium text-white transition-colors ${
+                    newPlate.trim() 
+                      ? 'bg-[#0052CC] hover:bg-[#0747A6]' 
+                      : 'bg-[#B3D4F5] cursor-not-allowed'
+                  }`}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    'Add Plate'
+                  )}
+                </Button>
 
-          <div className="mt-4 text-xs text-muted-foreground">
-            <strong>How to use:</strong> Enter 2-3 letters, then numbers and optionally a final letter (e.g., SR 4657C)
+                <Button
+                  onClick={() => navigate('/plates')}
+                  variant="outline"
+                  className="w-full h-12 text-base font-medium bg-[#E8EDF2] hover:bg-[#D8E0E8] text-foreground border-0"
+                >
+                  <List className="mr-2 h-5 w-5" />
+                  View Saved Plates
+                </Button>
+              </div>
+
+              <div className="mt-4 text-xs text-muted-foreground">
+                <strong>How to use:</strong> Enter 2-3 letters, then numbers and optionally a final letter (e.g., SR 4657C)
+              </div>
+            </Card>
           </div>
-        </Card>
+        </main>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
