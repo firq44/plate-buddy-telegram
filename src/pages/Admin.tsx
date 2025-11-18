@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { X, Loader2, UserPlus, Shield, Users, Download, List } from 'lucide-react';
+import { X, Loader2, UserPlus, Shield, Users, Download, List, Search } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { useUserAccess } from '@/hooks/useUserAccess';
@@ -48,6 +48,7 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [plateSearchQuery, setPlateSearchQuery] = useState('');
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -515,7 +516,11 @@ export default function Admin() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <List className="h-5 w-5 text-accent" />
-                  Все номера
+                  Все номера ({plates.filter(p => 
+                    p.plate_number.toLowerCase().includes(plateSearchQuery.toLowerCase()) ||
+                    (p.added_by_username && p.added_by_username.toLowerCase().includes(plateSearchQuery.toLowerCase())) ||
+                    p.added_by_telegram_id.includes(plateSearchQuery)
+                  ).length})
                 </h2>
                 <Button
                   variant="outline"
@@ -531,10 +536,29 @@ export default function Admin() {
                   Экспорт CSV
                 </Button>
               </div>
+              
+              <div className="mb-4 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по номеру, username или Telegram ID..."
+                  value={plateSearchQuery}
+                  onChange={(e) => setPlateSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                {plates.length > 0 ? (
+                {plates.filter(p => 
+                  p.plate_number.toLowerCase().includes(plateSearchQuery.toLowerCase()) ||
+                  (p.added_by_username && p.added_by_username.toLowerCase().includes(plateSearchQuery.toLowerCase())) ||
+                  p.added_by_telegram_id.includes(plateSearchQuery)
+                ).length > 0 ? (
                   <div className="space-y-2">
-                    {plates.map((plate, index) => (
+                    {plates.filter(p => 
+                      p.plate_number.toLowerCase().includes(plateSearchQuery.toLowerCase()) ||
+                      (p.added_by_username && p.added_by_username.toLowerCase().includes(plateSearchQuery.toLowerCase())) ||
+                      p.added_by_telegram_id.includes(plateSearchQuery)
+                    ).map((plate, index) => (
                       <div
                         key={`${plate.plate_number}-${index}`}
                         className="flex items-center justify-between p-4 bg-secondary rounded-lg"
@@ -560,7 +584,7 @@ export default function Admin() {
                   </div>
                 ) : (
                   <div className="text-center text-muted-foreground py-8">
-                    Нет номеров
+                    {plateSearchQuery ? 'Ничего не найдено' : 'Нет номеров'}
                   </div>
                 )}
               </div>
