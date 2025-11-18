@@ -28,7 +28,65 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate Telegram signature
+    const botToken = Deno.env.get('BOT_TOKEN');
+    if (!botToken) {
+      console.error('BOT_TOKEN not configured');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const urlParams = new URLSearchParams(initData);
+    const hash = urlParams.get('hash');
+    
+    if (!hash) {
+      return new Response(
+        JSON.stringify({ error: 'Missing signature' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Remove hash from params for validation
+    urlParams.delete('hash');
+
+    // Create data check string
+    const dataCheckArr = Array.from(urlParams.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}=${value}`);
+    const dataCheckString = dataCheckArr.join('\n');
+
+    // Compute secret key from bot token
+    const encoder = new TextEncoder();
+    const botTokenData = encoder.encode(botToken);
+    const secretKey = await crypto.subtle.importKey(
+      'raw',
+      await crypto.subtle.digest('SHA-256', botTokenData),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    // Compute HMAC and verify
+    const signature = await crypto.subtle.sign(
+      'HMAC',
+      secretKey,
+      encoder.encode(dataCheckString)
+    );
+    const computedHash = Array.from(new Uint8Array(signature))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    if (computedHash !== hash) {
+      console.error('Invalid signature');
+      return new Response(
+        JSON.stringify({ error: 'Invalid initData signature' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Signature is valid, proceed with authentication
     const userJson = urlParams.get('user');
 
     if (!userJson) {
