@@ -6,6 +6,8 @@ import { ArrowLeft, Download, Plus, Loader2, Trash2 } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { useUserAccess } from '@/hooks/useUserAccess';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 
 interface CarPlate {
   id: string;
@@ -136,9 +138,16 @@ export default function PlatesList() {
   };
 
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-gradient-to-br from-background to-muted/20">
-      <main className="flex-1 p-4 overflow-x-hidden w-full">
-        <div className="max-w-7xl mx-auto space-y-4 mt-4">
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-gradient-to-br from-background to-muted/20">
+        {isAdmin && <AppSidebar isAdmin={userIsAdmin} />}
+        <main className="flex-1 p-4 overflow-x-hidden w-full">
+          {isAdmin && (
+            <div className="fixed top-4 right-4 z-50">
+              <SidebarTrigger className="h-12 w-12 bg-card hover:bg-accent shadow-lg" />
+            </div>
+          )}
+          <div className="max-w-7xl mx-auto space-y-4 mt-4">
             <div className="mb-6">
               <div className="flex items-center gap-4 mb-2">
                 <Button
@@ -269,6 +278,7 @@ export default function PlatesList() {
             )}
           </div>
         </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 }
