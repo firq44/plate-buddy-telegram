@@ -47,27 +47,57 @@ export type Database = {
       car_plates: {
         Row: {
           added_by_telegram_id: string
+          attempt_count: number
           created_at: string
           description: string | null
           id: string
+          last_attempt_at: string | null
           plate_number: string
           updated_at: string
         }
         Insert: {
           added_by_telegram_id: string
+          attempt_count?: number
           created_at?: string
           description?: string | null
           id?: string
+          last_attempt_at?: string | null
           plate_number: string
           updated_at?: string
         }
         Update: {
           added_by_telegram_id?: string
+          attempt_count?: number
           created_at?: string
           description?: string | null
           id?: string
+          last_attempt_at?: string | null
           plate_number?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      plate_addition_attempts: {
+        Row: {
+          attempted_at: string
+          attempted_by_telegram_id: string
+          id: string
+          plate_number: string
+          success: boolean
+        }
+        Insert: {
+          attempted_at?: string
+          attempted_by_telegram_id: string
+          id?: string
+          plate_number: string
+          success?: boolean
+        }
+        Update: {
+          attempted_at?: string
+          attempted_by_telegram_id?: string
+          id?: string
+          plate_number?: string
+          success?: boolean
         }
         Relationships: []
       }
@@ -107,6 +137,17 @@ export type Database = {
     }
     Functions: {
       get_current_telegram_id: { Args: never; Returns: string }
+      get_plate_export_data: {
+        Args: never
+        Returns: {
+          added_by_telegram_id: string
+          added_by_username: string
+          attempt_count: number
+          created_at: string
+          last_attempt_at: string
+          plate_number: string
+        }[]
+      }
       is_authenticated_telegram_user: { Args: never; Returns: boolean }
     }
     Enums: {
