@@ -47,7 +47,7 @@ export default function CarChecker() {
         .from('users')
         .select('role')
         .eq('telegram_id', user.id.toString())
-        .single();
+        .maybeSingle();
 
       setIsAdmin(data?.role === 'admin');
     };

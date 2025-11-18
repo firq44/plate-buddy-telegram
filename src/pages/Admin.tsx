@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { X, Search, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ADMIN_TELEGRAM_IDS } from '@/lib/constants';
 
 interface User {
   id: string;
@@ -45,7 +46,13 @@ export default function Admin() {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (usersData) setUsers(usersData);
+      // Filter out main admin from the list (hidden from view)
+      if (usersData) {
+        const filteredUsers = usersData.filter(
+          (user) => !ADMIN_TELEGRAM_IDS.includes(user.telegram_id)
+        );
+        setUsers(filteredUsers);
+      }
       if (requestsData) setAccessRequests(requestsData);
     } catch (error) {
       console.error('Error loading data:', error);

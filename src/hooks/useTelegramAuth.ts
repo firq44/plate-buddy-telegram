@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegram } from '@/contexts/TelegramContext';
+import { isMainAdmin } from '@/lib/constants';
 
 export const useTelegramAuth = () => {
-  const { webApp, isReady } = useTelegram();
+  const { webApp, user, isReady } = useTelegram();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   useEffect(() => {
-    if (!isReady || !webApp?.initData) {
+    if (!isReady) {
+      setIsAuthenticating(false);
+      return;
+    }
+
+    // Main admins don't need authentication
+    if (user && isMainAdmin(user.id)) {
+      setIsAuthenticated(true);
+      setIsAuthenticating(false);
+      return;
+    }
+
+    if (!webApp?.initData) {
       setIsAuthenticating(false);
       return;
     }
@@ -49,7 +62,7 @@ export const useTelegramAuth = () => {
     };
 
     authenticate();
-  }, [webApp, isReady]);
+  }, [webApp, user, isReady]);
 
   return { isAuthenticated, isAuthenticating };
 };

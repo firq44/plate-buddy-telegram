@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegram } from '@/contexts/TelegramContext';
+import { isMainAdmin } from '@/lib/constants';
 
 export type AccessStatus = 'loading' | 'approved' | 'pending' | 'rejected' | 'no-request';
 
@@ -17,6 +18,13 @@ export const useUserAccess = () => {
 
     const checkAccess = async () => {
       try {
+        // Check if user is main admin (hardcoded)
+        if (isMainAdmin(user.id)) {
+          setIsAdmin(true);
+          setStatus('approved');
+          return;
+        }
+
         // Check if user is approved
         const { data: userData, error: userError } = await supabase
           .from('users')
