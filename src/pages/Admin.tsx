@@ -13,7 +13,7 @@ interface User {
   id: string;
   telegram_id: string;
   username: string | null;
-  role: 'admin' | 'user';
+  user_roles: { role: 'admin' | 'user' }[];
 }
 
 interface AccessRequest {
@@ -38,10 +38,24 @@ export default function Admin() {
 
   const loadData = async () => {
     try {
+      // Fetch users
       const { data: usersData } = await supabase
         .from('users')
-        .select('*')
+        .select('id, telegram_id, username')
         .order('created_at', { ascending: false });
+
+      // Fetch all user roles
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      // Merge users with their roles
+      const usersWithRoles = (usersData || []).map(user => ({
+        ...user,
+        user_roles: (rolesData || [])
+          .filter(r => r.user_id === user.id)
+          .map(r => ({ role: r.role as 'admin' | 'user' }))
+      }));
 
       const { data: requestsData } = await supabase
         .from('access_requests')
@@ -49,7 +63,7 @@ export default function Admin() {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (usersData) setUsers(usersData);
+      if (usersWithRoles) setUsers(usersWithRoles);
       if (requestsData) setAccessRequests(requestsData);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -62,6 +76,7 @@ export default function Admin() {
     const channel = supabase
       .channel('admin-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, loadData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'access_requests' }, loadData)
       .subscribe();
 
@@ -134,8 +149,9 @@ export default function Admin() {
     }
   };
 
-  const handlePromoteUser = async (userId: string, currentRole: 'user' | 'admin') => {
-    const newRole = currentRole === 'user' ? 'admin' : 'user';
+  const handlePromoteUser = async (userId: string, currentRoles: { role: 'admin' | 'user' }[]) => {
+    const isAdmin = currentRoles.some(r => r.role === 'admin');
+    const newRole = isAdmin ? 'user' : 'admin';
     try {
       if (newRole === 'admin') {
         // Add admin role
@@ -273,8 +289,8 @@ export default function Admin() {
       user.username?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const admins = filteredUsers.filter((u) => u.role === 'admin');
-  const regularUsers = filteredUsers.filter((u) => u.role === 'user');
+  const admins = filteredUsers.filter((u) => u.user_roles.some(r => r.role === 'admin'));
+  const regularUsers = filteredUsers.filter((u) => !u.user_roles.some(r => r.role === 'admin'));
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -356,7 +372,7 @@ export default function Admin() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handlePromoteUser(user.id, user.role)}
+                    onClick={() => handlePromoteUser(user.id, user.user_roles)}
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>
@@ -428,7 +444,7 @@ export default function Admin() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handlePromoteUser(user.id, user.role)}
+                    onClick={() => handlePromoteUser(user.id, user.user_roles)}
                   >
                     <ChevronUp className="h-4 w-4" />
                   </Button>
