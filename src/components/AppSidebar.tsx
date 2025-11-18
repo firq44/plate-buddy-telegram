@@ -1,4 +1,4 @@
-import { Home, List, Shield, Menu } from 'lucide-react';
+import { Home, List, Shield } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import {
@@ -22,23 +22,21 @@ export function AppSidebar({ isAdmin }: AppSidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const userItems = [
-    { title: 'Проверка номеров', url: '/checker', icon: Home },
-    { title: 'Сохраненные номера', url: '/plates', icon: List },
-  ];
-
-  const adminItems = [
-    { title: 'Админ панель', url: '/admin', icon: Shield },
-  ];
-
-  const items = isAdmin ? [...userItems, ...adminItems] : userItems;
+  // Для админов показываем только админ панель
+  // Для обычных пользователей показываем обычную навигацию
+  const items = isAdmin 
+    ? [{ title: 'Админ Панель', url: '/admin', icon: Shield }]
+    : [
+        { title: 'Проверка номеров', url: '/checker', icon: Home },
+        { title: 'Сохраненные номера', url: '/plates', icon: List },
+      ];
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border">
-      <SidebarContent>
+    <Sidebar collapsible="icon" className="border-r border-border bg-card">
+      <SidebarContent className="bg-card">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm font-semibold">
-            {open ? 'Навигация' : <Menu className="h-4 w-4" />}
+          <SidebarGroupLabel className="text-base font-semibold text-card-foreground px-4">
+            {open ? (isAdmin ? 'Управление' : 'Навигация') : '📋'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -49,8 +47,8 @@ export function AppSidebar({ isAdmin }: AppSidebarProps) {
                     <SidebarMenuButton asChild isActive={isActive}>
                       <NavLink
                         to={item.url}
-                        className="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-accent"
-                        activeClassName="bg-accent text-accent-foreground font-medium"
+                        className="flex items-center gap-3 rounded-md px-3 py-2.5 text-base transition-colors hover:bg-accent text-card-foreground hover:text-accent-foreground"
+                        activeClassName="bg-accent text-accent-foreground font-semibold"
                       >
                         <item.icon className="h-5 w-5" />
                         <span>{item.title}</span>

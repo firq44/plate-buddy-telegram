@@ -139,11 +139,11 @@ export default function PlatesList() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted/20">
+      <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-gradient-to-br from-background to-muted/20">
         <AppSidebar isAdmin={userIsAdmin} />
-        <main className="flex-1 p-4">
-          <div className="absolute top-4 right-4 z-50">
-            <SidebarTrigger className="h-10 w-10" />
+        <main className="flex-1 p-4 overflow-x-hidden w-full">
+          <div className="fixed top-4 right-4 z-50">
+            <SidebarTrigger className="h-12 w-12 bg-card hover:bg-accent shadow-lg" />
           </div>
           <div className="max-w-7xl mx-auto space-y-4 mt-16">
             <div className="mb-6">

@@ -146,21 +146,21 @@ export default function CarChecker() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted/20">
+      <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-gradient-to-br from-background to-muted/20">
         <AppSidebar isAdmin={isAdmin} />
-        <main className="flex-1 flex flex-col items-center justify-center p-4">
-          <div className="absolute top-4 right-4 z-50">
-            <SidebarTrigger className="h-10 w-10" />
+        <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-x-hidden w-full">
+          <div className="fixed top-4 right-4 z-50">
+            <SidebarTrigger className="h-12 w-12 bg-card hover:bg-accent shadow-lg" />
           </div>
-          <div className="w-full max-w-lg">
+          <div className="w-full max-w-lg px-2">
             <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-foreground mb-2">
+              <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
                 Plate Registry 🇵🇱
               </h1>
-              <p className="text-muted-foreground">Enter a Polish license plate number</p>
+              <p className="text-sm sm:text-base text-muted-foreground">Enter a Polish license plate number</p>
             </div>
 
-            <Card className="p-6 shadow-lg border-0">
+            <Card className="p-4 sm:p-6 shadow-lg border-0">
               <div className="space-y-4">
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">
