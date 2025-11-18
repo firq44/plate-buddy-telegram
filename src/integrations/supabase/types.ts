@@ -101,6 +101,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string
@@ -148,9 +169,21 @@ export type Database = {
           plate_number: string
         }[]
       }
+      get_user_id_from_telegram: {
+        Args: { telegram_id_param: string }
+        Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_authenticated_telegram_user: { Args: never; Returns: boolean }
     }
     Enums: {
+      app_role: "admin" | "user"
       request_status: "pending" | "approved" | "rejected"
       user_role: "admin" | "user"
     }
@@ -280,6 +313,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "user"],
       request_status: ["pending", "approved", "rejected"],
       user_role: ["admin", "user"],
     },
