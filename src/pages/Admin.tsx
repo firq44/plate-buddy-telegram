@@ -338,159 +338,165 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Админ Панель</h1>
-          <Button variant="outline" onClick={() => navigate('/checker')}>
-            Назад
-          </Button>
-        </div>
-
-        {accessRequests.length > 0 && (
-          <Card className="p-6">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Shield className="h-5 w-5 text-accent" />
-              Запросы на доступ ({accessRequests.length})
-            </h2>
-            <div className="space-y-3">
-              {accessRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className="flex items-center justify-between p-4 bg-secondary rounded-lg"
-                >
-                  <div>
-                    <div className="font-semibold text-foreground">
-                      {request.first_name || request.username || 'Без имени'}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      ID: {request.telegram_id}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(request.created_at).toLocaleString('ru-RU')}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApproveRequest(request.id, request.telegram_id)}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      Одобрить
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleRejectRequest(request.id)}
-                    >
-                      Отклонить
-                    </Button>
-                  </div>
-                </div>
-              ))}
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted/20">
+        <AppSidebar isAdmin={isAdmin} />
+        <main className="flex-1 p-4">
+          <div className="absolute top-4 left-4 z-50">
+            <SidebarTrigger />
+          </div>
+          <div className="max-w-7xl mx-auto space-y-6 mt-16">
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold text-foreground">Админ Панель</h1>
+              <Button variant="outline" onClick={() => navigate('/checker')}>
+                Назад
+              </Button>
             </div>
-          </Card>
-        )}
 
-        <Card className="p-6">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-accent" />
-            Добавить пользователя
-          </h2>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Telegram ID"
-              value={telegramId}
-              onChange={(e) => setTelegramId(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              onClick={() => handleAddUser('user')}
-              disabled={isLoading || !telegramId.trim()}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Добавить User'
-              )}
-            </Button>
-            <Button
-              onClick={() => handleAddUser('admin')}
-              disabled={isLoading || !telegramId.trim()}
-              variant="secondary"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Добавить Admin'
-              )}
-            </Button>
-          </div>
-        </Card>
+            {accessRequests.length > 0 && (
+              <Card className="p-6">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-accent" />
+                  Запросы на доступ ({accessRequests.length})
+                </h2>
+                <div className="space-y-3">
+                  {accessRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="flex items-center justify-between p-4 bg-secondary rounded-lg"
+                    >
+                      <div>
+                        <div className="font-semibold text-foreground">
+                          {request.first_name || request.username || 'Без имени'}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          ID: {request.telegram_id}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(request.created_at).toLocaleString('ru-RU')}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleApproveRequest(request.id, request.telegram_id)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          Одобрить
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleRejectRequest(request.id)}
+                        >
+                          Отклонить
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Users className="h-5 w-5 text-accent" />
-              Пользователи ({users.length})
-            </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportPlates}
-              disabled={exportingCsv}
-            >
-              {exportingCsv ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Download className="h-4 w-4 mr-2" />
-              )}
-              Экспорт CSV
-            </Button>
-          </div>
-          <div className="space-y-2 max-h-[500px] overflow-y-auto">
-            {users.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between p-4 bg-secondary rounded-lg"
-              >
-                <div>
-                  <div className="font-semibold text-foreground flex items-center gap-2">
-                    {user.first_name || user.username || 'Без имени'}
-                    {user.user_roles.some(r => r.role === 'admin') && (
-                      <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded">
-                        ADMIN
-                      </span>
+            <Card className="p-6">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-accent" />
+                Добавить пользователя
+              </h2>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Telegram ID"
+                  value={telegramId}
+                  onChange={(e) => setTelegramId(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => handleAddUser('user')}
+                  disabled={isLoading || !telegramId.trim()}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Добавить User'
+                  )}
+                </Button>
+                <Button
+                  onClick={() => handleAddUser('admin')}
+                  disabled={isLoading || !telegramId.trim()}
+                  variant="secondary"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Добавить Admin'
+                  )}
+                </Button>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Users className="h-5 w-5 text-accent" />
+                  Пользователи ({users.length})
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportPlates}
+                  disabled={exportingCsv}
+                >
+                  {exportingCsv ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Экспорт CSV
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {users.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-4 bg-secondary rounded-lg"
+                  >
+                    <div>
+                      <div className="font-semibold text-foreground flex items-center gap-2">
+                        {user.first_name || user.username || 'Без имени'}
+                        {user.user_roles.some(r => r.role === 'admin') && (
+                          <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded">
+                            ADMIN
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        ID: {user.telegram_id}
+                      </div>
+                      {user.username && (
+                        <div className="text-xs text-muted-foreground">
+                          @{user.username}
+                        </div>
+                      )}
+                    </div>
+                    {user.telegram_id !== '785921635' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveUser(user.id, user.telegram_id)}
+                        className="hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    ID: {user.telegram_id}
+                ))}
+                {users.length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    Нет пользователей
                   </div>
-                  {user.username && (
-                    <div className="text-xs text-muted-foreground">
-                      @{user.username}
-                    </div>
-                  )}
-                </div>
-                {user.telegram_id !== '785921635' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveUser(user.id, user.telegram_id)}
-                    className="hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
                 )}
               </div>
-            ))}
-            {users.length === 0 && (
-              <div className="text-center text-muted-foreground py-8">
-                Нет пользователей
-              </div>
-            )}
-          </div>
-        </Card>
+            </Card>
           </div>
         </main>
       </div>

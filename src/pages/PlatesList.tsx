@@ -138,131 +138,142 @@ export default function PlatesList() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="mb-6">
-          <div className="flex items-center gap-4 mb-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/checker')}
-              className="hover:bg-secondary"
-            >
-              <ArrowLeft className="h-6 w-6" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Saved Plates</h1>
-              <p className="text-muted-foreground">All saved license plates</p>
-            </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted/20">
+        <AppSidebar isAdmin={userIsAdmin} />
+        <main className="flex-1 p-4">
+          <div className="absolute top-4 left-4 z-50">
+            <SidebarTrigger />
           </div>
-        </div>
-
-        <div className="flex gap-3 mb-6">
-          <Button
-            variant="outline"
-            onClick={handleExportPlates}
-            disabled={exportingCsv}
-            className="bg-white hover:bg-gray-50"
-          >
-            {exportingCsv ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            Export to Excel
-          </Button>
-          <Button
-            onClick={() => navigate('/checker')}
-            className="bg-[#0052CC] hover:bg-[#0747A6] text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add New
-          </Button>
-        </div>
-
-        {plates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="text-6xl mb-4">🚗</div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">No saved plates</h2>
-            <p className="text-muted-foreground mb-6">Add your first license plate</p>
-            <Button
-              onClick={() => navigate('/checker')}
-              className="bg-[#0052CC] hover:bg-[#0747A6] text-white"
-            >
-              Add Plate
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {plates.map((plate) => {
-              // Split plate into letters and numbers with space
-              const match = plate.plate_number.match(/^([A-Z]{2,3})(.+)$/);
-              const letters = match ? match[1] : '';
-              const numbers = match ? match[2] : '';
-              
-              return (
-                <div
-                  key={plate.id}
-                  className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
+          <div className="max-w-7xl mx-auto space-y-4 mt-16">
+            <div className="mb-6">
+              <div className="flex items-center gap-4 mb-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/checker')}
+                  className="hover:bg-secondary"
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-stretch bg-white rounded-lg overflow-hidden shadow-md border-2 border-black">
-                      <div className="bg-[#4169E1] text-white px-3 flex flex-col items-center justify-center gap-0.5">
-                        <span className="text-base">🇵🇱</span>
-                        <span className="text-xs font-bold leading-none">PL</span>
-                      </div>
-                      <div className="px-3 py-2 bg-[#E8EDF2] flex items-center gap-2">
-                        <span className="text-lg font-bold text-black tracking-wider">{letters}</span>
-                        <span className="text-lg font-bold text-black tracking-wider">{numbers}</span>
-                      </div>
-                    </div>
-                    {canDeletePlate(plate) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeletePlate(plate.id)}
-                        disabled={deletingIds.has(plate.id)}
-                        className="hover:bg-red-50 hover:text-red-600"
-                      >
-                        {deletingIds.has(plate.id) ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                  <ArrowLeft className="h-6 w-6" />
+                </Button>
+                <div>
+                  <h1 className="text-3xl font-bold text-foreground">Saved Plates</h1>
+                  <p className="text-muted-foreground">All saved license plates</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mb-6">
+              <Button
+                variant="outline"
+                onClick={handleExportPlates}
+                disabled={exportingCsv}
+                className="bg-white hover:bg-gray-50"
+              >
+                {exportingCsv ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Export to Excel
+              </Button>
+              <Button
+                onClick={() => navigate('/checker')}
+                className="bg-[#0052CC] hover:bg-[#0747A6] text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add New
+              </Button>
+            </div>
+
+            {plates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="text-6xl mb-4">🚗</div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">No saved plates</h2>
+                <p className="text-muted-foreground mb-6">Add your first license plate</p>
+                <Button
+                  onClick={() => navigate('/checker')}
+                  className="bg-[#0052CC] hover:bg-[#0747A6] text-white"
+                >
+                  Add Plate
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {plates.map((plate) => {
+                  const match = plate.plate_number.match(/^([A-Z]{2,3})(.+)$/);
+                  const letters = match ? match[1] : '';
+                  const numbers = match ? match[2] : '';
+                  
+                  return (
+                    <div
+                      key={plate.id}
+                      className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-stretch bg-white rounded-lg overflow-hidden shadow-md border-2 border-black">
+                          <div className="bg-[#4169E1] text-white px-3 flex flex-col items-center justify-center gap-0.5">
+                            <span className="text-base">🇵🇱</span>
+                            <span className="text-xs font-bold leading-none">PL</span>
+                          </div>
+                          <div className="px-3 py-2 bg-[#E8EDF2] flex items-center gap-2">
+                            <span className="text-lg font-bold text-black tracking-wider">{letters}</span>
+                            <span className="text-lg font-bold text-black tracking-wider">{numbers}</span>
+                          </div>
+                        </div>
+                        {canDeletePlate(plate) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeletePlate(plate.id)}
+                            disabled={deletingIds.has(plate.id)}
+                            className="hover:bg-red-50 hover:text-red-600"
+                          >
+                            {deletingIds.has(plate.id) ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            )}
+                          </Button>
                         )}
-                      </Button>
-                    )}
-                  </div>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Added:</span>
-                      <span className="text-foreground font-medium">
-                        {new Date(plate.created_at).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                    {plate.last_attempt_at && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Last attempt:</span>
-                        <span className="text-foreground font-medium">
-                          {new Date(plate.last_attempt_at).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
                       </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Attempts:</span>
-                      <span className="text-red-600 font-bold">{plate.attempt_count}</span>
-        </div>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Added:</span>
+                          <span className="text-foreground font-medium">
+                            {new Date(plate.created_at).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        {plate.last_attempt_at && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Last attempt:</span>
+                            <span className="text-foreground font-medium">
+                              {new Date(plate.last_attempt_at).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Attempts:</span>
+                          <span className="text-red-600 font-bold">{plate.attempt_count}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </main>
       </div>
