@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { List, Loader2, Trash2, MoreVertical, X } from 'lucide-react';
+import { List, Loader2, MoreVertical, X } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { plateSchema } from '@/lib/validation';
@@ -30,8 +30,6 @@ export default function CarChecker() {
   const [newPlate, setNewPlate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [showPlates, setShowPlates] = useState(false);
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const loadPlates = async () => {
     try {
@@ -153,33 +151,6 @@ export default function CarChecker() {
     }
   };
 
-  const handleDeletePlate = async (id: string) => {
-    setDeletingIds(prev => new Set(prev).add(id));
-    try {
-      const { error } = await supabase
-        .from('car_plates')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      toast.success('Номер удален');
-    } catch (error) {
-      console.error('Error deleting plate:', error);
-      toast.error('Ошибка при удалении номера');
-    } finally {
-      setDeletingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
-    }
-  };
-
-  const canDeletePlate = (plate: CarPlate) => {
-    if (!user) return false;
-    return isAdmin || plate.added_by_telegram_id === user.id.toString();
-  };
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Dark Header */}
@@ -221,7 +192,7 @@ export default function CarChecker() {
             <p className="text-muted-foreground">Enter a Polish license plate number</p>
           </div>
 
-          <Card className="p-6 shadow-lg">
+          <Card className="p-6 shadow-lg border-0">
             <div className="space-y-4">
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">
@@ -250,12 +221,12 @@ export default function CarChecker() {
               </Button>
 
               <Button
-                onClick={() => setShowPlates(!showPlates)}
+                onClick={() => navigate('/plates')}
                 variant="outline"
-                className="w-full h-12 text-base font-medium bg-[#E8EDF2] hover:bg-[#D8E0E8] border-0 text-foreground"
+                className="w-full h-12 text-base font-medium bg-[#E8EDF2] hover:bg-[#D8E0E8] text-foreground"
               >
                 <List className="mr-2 h-5 w-5" />
-                {showPlates ? 'Hide' : 'View'} Saved Plates
+                View Saved Plates
               </Button>
             </div>
 
@@ -263,43 +234,6 @@ export default function CarChecker() {
               <strong>How to use:</strong> Enter 2-3 letters, then numbers and optionally a final letter (e.g., SR 4657C)
             </div>
           </Card>
-
-          {showPlates && (
-            <Card className="mt-4 p-6 shadow-lg">
-              <h3 className="font-semibold text-lg mb-4">Saved Plates ({plates.length})</h3>
-              {plates.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No plates saved yet</p>
-              ) : (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {plates.map((plate) => (
-                    <div
-                      key={plate.id}
-                      className="flex items-center justify-between p-3 bg-secondary rounded-lg"
-                    >
-                      <span className="font-mono font-semibold text-foreground">
-                        {plate.plate_number}
-                      </span>
-                      {canDeletePlate(plate) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeletePlate(plate.id)}
-                          disabled={deletingIds.has(plate.id)}
-                          className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          {deletingIds.has(plate.id) ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          )}
         </div>
       </div>
 

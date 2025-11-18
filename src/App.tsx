@@ -7,6 +7,7 @@ import { TelegramProvider } from "@/contexts/TelegramContext";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import CarChecker from "./pages/CarChecker";
+import PlatesList from "./pages/PlatesList";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/checker" element={<CarChecker />} />
+            <Route path="/plates" element={<PlatesList />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
