@@ -232,7 +232,7 @@ export default function PlatesList() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Added:</span>
                       <span className="text-foreground font-medium">
-                        {new Date(plate.created_at).toLocaleDateString('en-US', {
+                        {new Date(plate.created_at).toLocaleString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -245,7 +245,7 @@ export default function PlatesList() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Last attempt:</span>
                         <span className="text-foreground font-medium">
-                          {new Date(plate.last_attempt_at).toLocaleDateString('en-US', {
+                          {new Date(plate.last_attempt_at).toLocaleString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
