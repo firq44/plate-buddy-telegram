@@ -74,8 +74,8 @@ export default function CarChecker() {
         .maybeSingle();
 
       if (existing) {
-        const newAttemptCount = (existing.attempt_count || 0) + 1;
         const now = new Date();
+        const newAttemptCount = (existing.attempt_count || 0) + 1;
         
         await supabase.from('plate_addition_attempts').insert({
           plate_number: plateNumber,
@@ -91,13 +91,23 @@ export default function CarChecker() {
           })
           .eq('id', existing.id);
 
-        const addedDate = new Date(existing.created_at).toLocaleDateString('ru-RU');
-        const lastAttemptDate = existing.last_attempt_at 
-          ? new Date(existing.last_attempt_at).toLocaleDateString('ru-RU')
-          : now.toLocaleDateString('ru-RU');
+        const addedDateTime = new Date(existing.created_at).toLocaleString('ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        const lastAttemptDateTime = now.toLocaleString('ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
         
         toast.error('Номер уже добавлен', {
-          description: `Добавлен: ${addedDate}\nПопыток: ${newAttemptCount}\nПоследняя попытка: ${lastAttemptDate}`,
+          description: `Добавлен: ${addedDateTime}\nПопыток: ${newAttemptCount}\nПоследняя попытка: ${lastAttemptDateTime}`,
           duration: 5000,
         });
         setNewPlate('');
@@ -156,7 +166,11 @@ export default function CarChecker() {
             <Button
               onClick={handleAddPlate}
               disabled={isLoading || !newPlate.trim()}
-              className="w-full h-12 text-base font-medium bg-[#7FA8DA] hover:bg-[#6B94C4] text-white"
+              className={`w-full h-12 text-base font-medium text-white transition-colors ${
+                newPlate.trim() 
+                  ? 'bg-[#0052CC] hover:bg-[#0747A6]' 
+                  : 'bg-[#B3D4F5] cursor-not-allowed'
+              }`}
             >
               {isLoading ? (
                 <>
