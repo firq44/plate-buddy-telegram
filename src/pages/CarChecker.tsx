@@ -3,11 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { List, Loader2, Trash2, Settings } from 'lucide-react';
+import { List, Loader2, Trash2, MoreVertical, X } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { plateSchema } from '@/lib/validation';
 import { PlateInput } from '@/components/PlateInput';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface CarPlate {
   id: string;
@@ -175,105 +181,131 @@ export default function CarChecker() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
-            Plate Registry 🇵🇱
-          </h1>
-          <p className="text-muted-foreground">Enter a Polish license plate number</p>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Dark Header */}
+      <div className="bg-[#2C3E50] text-white px-4 py-3 flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Winchester</h2>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate('/admin')}>
+                  Admin Panel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-white hover:bg-white/10"
+            onClick={() => window.Telegram?.WebApp?.close()}
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
+      </div>
 
-        <Card className="p-6 shadow-lg">
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">
-                License Plate Number
-              </label>
-              <PlateInput
-                value={newPlate}
-                onChange={setNewPlate}
-                placeholder="SS 4657C"
-              />
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-lg">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-foreground mb-2">
+              Plate Registry 🇵🇱
+            </h1>
+            <p className="text-muted-foreground">Enter a Polish license plate number</p>
+          </div>
+
+          <Card className="p-6 shadow-lg">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">
+                  License Plate Number
+                </label>
+                <PlateInput
+                  value={newPlate}
+                  onChange={setNewPlate}
+                  placeholder="SS 4657C"
+                />
+              </div>
+
+              <Button
+                onClick={handleAddPlate}
+                disabled={isLoading || !newPlate.trim()}
+                className="w-full h-12 text-base font-medium bg-[#7FA8DA] hover:bg-[#6B94C4] text-white"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add Plate'
+                )}
+              </Button>
+
+              <Button
+                onClick={() => setShowPlates(!showPlates)}
+                variant="outline"
+                className="w-full h-12 text-base font-medium bg-[#E8EDF2] hover:bg-[#D8E0E8] border-0 text-foreground"
+              >
+                <List className="mr-2 h-5 w-5" />
+                {showPlates ? 'Hide' : 'View'} Saved Plates
+              </Button>
             </div>
 
-            <Button
-              onClick={handleAddPlate}
-              disabled={isLoading || !newPlate.trim()}
-              className="w-full h-12 text-base font-medium"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                'Add Plate'
-              )}
-            </Button>
-
-            <Button
-              onClick={() => setShowPlates(!showPlates)}
-              variant="outline"
-              className="w-full h-12 text-base font-medium"
-            >
-              <List className="mr-2 h-5 w-5" />
-              {showPlates ? 'Hide' : 'View'} Saved Plates
-            </Button>
-
-            {isAdmin && (
-              <Button
-                onClick={() => navigate('/admin')}
-                variant="outline"
-                className="w-full h-12 text-base font-medium"
-              >
-                <Settings className="mr-2 h-5 w-5" />
-                Admin Panel
-              </Button>
-            )}
-          </div>
-
-          <div className="mt-4 text-xs text-muted-foreground">
-            <strong>How to use:</strong> Enter 2-3 letters, then numbers and optionally a final letter (e.g., SR 4657C)
-          </div>
-        </Card>
-
-        {showPlates && (
-          <Card className="mt-4 p-6 shadow-lg">
-            <h3 className="font-semibold text-lg mb-4">Saved Plates ({plates.length})</h3>
-            {plates.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">No plates saved yet</p>
-            ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {plates.map((plate) => (
-                  <div
-                    key={plate.id}
-                    className="flex items-center justify-between p-3 bg-secondary rounded-lg"
-                  >
-                    <span className="font-mono font-semibold text-foreground">
-                      {plate.plate_number}
-                    </span>
-                    {canDeletePlate(plate) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeletePlate(plate.id)}
-                        disabled={deletingIds.has(plate.id)}
-                        className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        {deletingIds.has(plate.id) ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="mt-4 text-xs text-muted-foreground">
+              <strong>How to use:</strong> Enter 2-3 letters, then numbers and optionally a final letter (e.g., SR 4657C)
+            </div>
           </Card>
-        )}
+
+          {showPlates && (
+            <Card className="mt-4 p-6 shadow-lg">
+              <h3 className="font-semibold text-lg mb-4">Saved Plates ({plates.length})</h3>
+              {plates.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No plates saved yet</p>
+              ) : (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {plates.map((plate) => (
+                    <div
+                      key={plate.id}
+                      className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+                    >
+                      <span className="font-mono font-semibold text-foreground">
+                        {plate.plate_number}
+                      </span>
+                      {canDeletePlate(plate) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePlate(plate.id)}
+                          disabled={deletingIds.has(plate.id)}
+                          className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          {deletingIds.has(plate.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Dark Footer */}
+      <div className="bg-[#2C3E50] text-white text-center py-4">
+        <p className="text-sm">@carplatespl_bot</p>
       </div>
     </div>
   );
