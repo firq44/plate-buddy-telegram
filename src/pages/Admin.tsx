@@ -342,8 +342,8 @@ export default function Admin() {
       <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted/20">
         <AppSidebar isAdmin={isAdmin} />
         <main className="flex-1 p-4">
-          <div className="absolute top-4 left-4 z-50">
-            <SidebarTrigger />
+          <div className="absolute top-4 right-4 z-50">
+            <SidebarTrigger className="h-10 w-10" />
           </div>
           <div className="max-w-7xl mx-auto space-y-6 mt-16">
             <div className="flex items-center justify-between">
