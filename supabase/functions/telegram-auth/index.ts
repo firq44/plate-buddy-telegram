@@ -58,11 +58,25 @@ Deno.serve(async (req) => {
     const dataCheckString = dataCheckArr.join('\n');
 
     // Compute secret key from bot token
+    // According to Telegram docs: secret_key = HMAC_SHA256(<bot_token>, "WebAppData")
     const encoder = new TextEncoder();
-    const botTokenData = encoder.encode(botToken);
+    const webAppDataKey = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode('WebAppData'),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const secretKeyData = await crypto.subtle.sign(
+      'HMAC',
+      webAppDataKey,
+      encoder.encode(botToken)
+    );
+    
     const secretKey = await crypto.subtle.importKey(
       'raw',
-      await crypto.subtle.digest('SHA-256', botTokenData),
+      secretKeyData,
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']
