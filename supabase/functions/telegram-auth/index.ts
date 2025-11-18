@@ -176,6 +176,68 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Create or update user in public.users table
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('telegram_id', user.id.toString())
+      .maybeSingle();
+
+    let publicUserId: string;
+
+    if (!existingUser) {
+      // Create new user in public.users
+      const { data: newUser, error: insertError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          telegram_id: user.id.toString(),
+          username: user.username || null,
+          first_name: user.first_name || null,
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error('Error creating public user:', insertError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create user record' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      publicUserId = newUser.id;
+    } else {
+      publicUserId = existingUser.id;
+      
+      // Update existing user info
+      await supabaseAdmin
+        .from('users')
+        .update({
+          username: user.username || null,
+          first_name: user.first_name || null,
+        })
+        .eq('id', publicUserId);
+    }
+
+    // Auto-grant admin role for super admin (Telegram ID: 785921635)
+    if (user.id.toString() === '785921635') {
+      const { data: existingRole } = await supabaseAdmin
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', publicUserId)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (!existingRole) {
+        await supabaseAdmin
+          .from('user_roles')
+          .insert({
+            user_id: publicUserId,
+            role: 'admin',
+          });
+      }
+    }
+
     return new Response(
       JSON.stringify({
         access_token: signInData.session.access_token,
