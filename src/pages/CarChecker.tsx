@@ -69,7 +69,7 @@ export default function CarChecker() {
     try {
       const { data: existing } = await supabase
         .from('car_plates')
-        .select('id, last_attempt_at, attempt_count')
+        .select('id, last_attempt_at, attempt_count, created_at')
         .eq('plate_number', plateNumber)
         .maybeSingle();
 
@@ -88,8 +88,14 @@ export default function CarChecker() {
           })
           .eq('id', existing.id);
 
-        toast.error('Номер уже существует', {
-          description: 'Этот номер уже добавлен в базу',
+        const addedDate = new Date(existing.created_at).toLocaleDateString('ru-RU');
+        const lastAttemptDate = existing.last_attempt_at 
+          ? new Date(existing.last_attempt_at).toLocaleDateString('ru-RU')
+          : 'Нет данных';
+        
+        toast.error('Номер уже добавлен', {
+          description: `Добавлен: ${addedDate}\nПопыток: ${existing.attempt_count + 1}\nПоследняя попытка: ${lastAttemptDate}`,
+          duration: 5000,
         });
         setNewPlate('');
         setIsLoading(false);

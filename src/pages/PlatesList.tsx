@@ -12,6 +12,8 @@ interface CarPlate {
   description: string | null;
   added_by_telegram_id: string;
   created_at: string;
+  last_attempt_at: string | null;
+  attempt_count: number;
 }
 
 export default function PlatesList() {
@@ -187,41 +189,79 @@ export default function PlatesList() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-3">
-            {plates.map((plate) => (
-              <div
-                key={plate.id}
-                className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-200"
-              >
-                <div>
-                  <div className="font-mono font-bold text-xl text-foreground">
-                    {plate.plate_number}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {plates.map((plate) => {
+              const parts = plate.plate_number.split(' ');
+              const letters = parts[0] || '';
+              const numbers = parts.slice(1).join(' ') || '';
+              
+              return (
+                <div
+                  key={plate.id}
+                  className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-stretch bg-white rounded-lg overflow-hidden shadow-md border-2 border-black">
+                      <div className="bg-[#4169E1] text-white px-3 flex flex-col items-center justify-center gap-0.5">
+                        <span className="text-base">🇵🇱</span>
+                        <span className="text-xs font-bold leading-none">PL</span>
+                      </div>
+                      <div className="px-3 py-2 bg-[#E8EDF2] flex items-center gap-1">
+                        <span className="text-lg font-bold text-black tracking-wider">{letters}</span>
+                        <span className="text-lg font-bold text-black tracking-wider">{numbers}</span>
+                      </div>
+                    </div>
+                    {canDeletePlate(plate) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeletePlate(plate.id)}
+                        disabled={deletingIds.has(plate.id)}
+                        className="hover:bg-red-50 hover:text-red-600"
+                      >
+                        {deletingIds.has(plate.id) ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        )}
+                      </Button>
+                    )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    Added {new Date(plate.created_at).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Added:</span>
+                      <span className="text-foreground font-medium">
+                        {new Date(plate.created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    {plate.last_attempt_at && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Last attempt:</span>
+                        <span className="text-foreground font-medium">
+                          {new Date(plate.last_attempt_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Attempts:</span>
+                      <span className="text-red-600 font-bold">{plate.attempt_count}</span>
+                    </div>
                   </div>
                 </div>
-                {canDeletePlate(plate) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeletePlate(plate.id)}
-                    disabled={deletingIds.has(plate.id)}
-                    className="hover:bg-red-50 hover:text-red-600"
-                  >
-                    {deletingIds.has(plate.id) ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

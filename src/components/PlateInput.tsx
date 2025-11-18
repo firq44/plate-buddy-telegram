@@ -21,7 +21,7 @@ export const PlateInput = ({ value, onChange, placeholder, className }: PlateInp
     const newValue = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
     if (newValue.length <= 3) {
       onChange(newValue + (numbers ? ' ' + numbers : ''));
-      if (newValue.length === 2 && numbersRef.current) {
+      if (newValue.length === 3 && numbersRef.current) {
         numbersRef.current.focus();
       }
     }
@@ -29,7 +29,7 @@ export const PlateInput = ({ value, onChange, placeholder, className }: PlateInp
 
   const handleNumbersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (newValue.length <= 5) {
+    if (newValue.length <= 6) {
       onChange((letters || '') + (newValue ? ' ' + newValue : ''));
     }
   };
@@ -64,7 +64,7 @@ export const PlateInput = ({ value, onChange, placeholder, className }: PlateInp
         onChange={handleLettersChange}
         onKeyDown={handleLettersKeyDown}
         placeholder="SS"
-        className="w-20 px-3 py-3 text-2xl font-bold tracking-widest text-[#8B9DC3] bg-[#E8EDF2] focus:outline-none placeholder:text-[#B8C5D6] uppercase text-center"
+        className="w-20 px-3 py-3 text-2xl font-bold tracking-widest text-black bg-[#E8EDF2] focus:outline-none placeholder:text-[#B8C5D6] uppercase text-center"
         maxLength={3}
       />
 
@@ -79,8 +79,8 @@ export const PlateInput = ({ value, onChange, placeholder, className }: PlateInp
         onChange={handleNumbersChange}
         onKeyDown={handleNumbersKeyDown}
         placeholder="4657C"
-        className="flex-1 px-4 py-3 text-2xl font-bold tracking-widest text-[#8B9DC3] bg-[#E8EDF2] focus:outline-none placeholder:text-[#B8C5D6] uppercase"
-        maxLength={5}
+        className="flex-1 px-4 py-3 text-2xl font-bold tracking-widest text-black bg-[#E8EDF2] focus:outline-none placeholder:text-[#B8C5D6] uppercase"
+        maxLength={6}
       />
     </div>
   );
