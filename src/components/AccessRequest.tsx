@@ -31,15 +31,38 @@ export const AccessRequest = () => {
         return;
       }
 
-      const { error } = await supabase
+      // Check if there's an existing request
+      const { data: existingRequest } = await supabase
         .from('access_requests')
-        .insert({
-          telegram_id: validation.data.telegram_id,
-          username: validation.data.username || null,
-          first_name: validation.data.first_name || null,
-        });
+        .select('id, status')
+        .eq('telegram_id', validation.data.telegram_id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (existingRequest) {
+        // Update existing request to pending
+        const { error } = await supabase
+          .from('access_requests')
+          .update({ 
+            status: 'pending',
+            username: validation.data.username || null,
+            first_name: validation.data.first_name || null,
+          })
+          .eq('id', existingRequest.id);
+
+        if (error) throw error;
+      } else {
+        // Create new request
+        const { error } = await supabase
+          .from('access_requests')
+          .insert({
+            telegram_id: validation.data.telegram_id,
+            username: validation.data.username || null,
+            first_name: validation.data.first_name || null,
+            status: 'pending',
+          });
+
+        if (error) throw error;
+      }
 
       toast.success('Запрос отправлен', {
         description: 'Администратор рассмотрит ваш запрос',
