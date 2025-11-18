@@ -38,7 +38,7 @@ interface PlateData {
 }
 
 export default function Admin() {
-  const { user: telegramUser } = useTelegram();
+  const { webApp, user: telegramUser } = useTelegram();
   const { isAdmin } = useUserAccess();
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
@@ -329,10 +329,21 @@ export default function Admin() {
       ].join('\n');
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
-      link.click();
+      const url = URL.createObjectURL(blob);
+
+      if (webApp) {
+        // В мини‑приложении открываем файл через Telegram WebApp,
+        // чтобы система предложила сохранить/поделиться документом
+        webApp.openLink(url);
+      } else {
+        // В обычном браузере загружаем файл как обычно
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
       
       toast.success('CSV экспортирован');
     } catch (error) {
