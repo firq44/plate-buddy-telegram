@@ -22,9 +22,11 @@ export function AppSidebar({ isAdmin }: AppSidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
 
+  console.log('AppSidebar isAdmin prop:', isAdmin);
+
   // Для админов показываем только админ панель
   // Для обычных пользователей показываем обычную навигацию
-  const items = isAdmin 
+  const items = isAdmin
     ? [{ title: 'Админ Панель', url: '/admin', icon: Shield }]
     : [
         { title: 'Проверка номеров', url: '/checker', icon: Home },
