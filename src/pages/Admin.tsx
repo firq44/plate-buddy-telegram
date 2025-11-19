@@ -321,6 +321,18 @@ export default function Admin() {
   const handleExportPlates = async () => {
     setExportingCsv(true);
     try {
+      // В Telegram Mini App отправляем файл прямо в чат пользователя
+      if (webApp && telegramUser) {
+        const { error: funcError } = await supabase.functions.invoke('export-plates', {
+          body: { telegramId: telegramUser.id.toString() },
+        });
+
+        if (funcError) throw funcError;
+
+        toast.success('CSV файл отправлен вам в Telegram');
+        return;
+      }
+
       const { data, error } = await supabase.rpc('get_plate_export_data');
       
       if (error) throw error;
@@ -360,6 +372,18 @@ export default function Admin() {
   const handleExportExcel = async () => {
     setExportingExcel(true);
     try {
+      // В Telegram Mini App также отправляем файл в чат (в CSV формате для открытия в Excel/Sheets)
+      if (webApp && telegramUser) {
+        const { error: funcError } = await supabase.functions.invoke('export-plates', {
+          body: { telegramId: telegramUser.id.toString() },
+        });
+
+        if (funcError) throw funcError;
+
+        toast.success('Файл отправлен вам в Telegram, откройте его в Excel или Google Sheets');
+        return;
+      }
+
       const { data, error } = await supabase.rpc('get_plate_export_data');
       
       if (error) throw error;
