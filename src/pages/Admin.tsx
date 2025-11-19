@@ -337,25 +337,15 @@ export default function Admin() {
         ].join(','))
       ].join('\n');
 
-      // Используем application/octet-stream для принудительного скачивания
-      const blob = new Blob([csv], { type: 'application/octet-stream' });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
-      
-      if (webApp) {
-        // В Telegram Mini App открываем файл во внешнем браузере,
-        // где уже можно выбрать путь сохранения
-        webApp.openLink(url);
-        toast.success('Файл открыт в браузере. Сохраните его через меню «Поделиться» или «Сохранить в Файлы».');
-      } else {
-        // В обычном браузере загружаем файл как обычно
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-      
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
       toast.success('CSV экспортирован');
@@ -406,23 +396,14 @@ export default function Admin() {
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
-      
       const fileName = `plates_${new Date().toISOString().split('T')[0]}.xlsx`;
-      
-      if (webApp) {
-        // В Telegram Mini App открываем файл во внешнем браузере
-        webApp.openLink(url);
-        toast.success('Excel файл открыт в браузере. Сохраните его или откройте в Google Sheets/Excel.');
-      } else {
-        // В обычном браузере загружаем файл
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-      
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
       toast.success('Excel файл экспортирован');
@@ -440,7 +421,7 @@ export default function Admin() {
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
-  }
+  };
 
   return (
     <SidebarProvider>
