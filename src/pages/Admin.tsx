@@ -339,17 +339,10 @@ export default function Admin() {
       const url = URL.createObjectURL(blob);
       
       if (webApp) {
-        // В Telegram Mini App используем openTelegramLink для корректного скачивания
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Также показываем уведомление с инструкцией
-        toast.success('Файл готов к скачиванию. Нажмите "Открыть" в браузере.');
+        // В Telegram Mini App открываем файл во внешнем браузере,
+        // где уже можно выбрать путь сохранения
+        webApp.openLink(url);
+        toast.success('Файл открыт в браузере. Сохраните его через меню «Поделиться» или «Сохранить в Файлы».');
       } else {
         // В обычном браузере загружаем файл как обычно
         const link = document.createElement('a');
