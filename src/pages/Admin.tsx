@@ -294,6 +294,12 @@ export default function Admin() {
         .delete()
         .eq('user_id', userId);
 
+      // Удаляем все заявки пользователя
+      await supabase
+        .from('access_requests')
+        .delete()
+        .eq('telegram_id', telegramIdToRemove);
+
       const { error } = await supabase
         .from('users')
         .delete()
@@ -330,20 +336,13 @@ export default function Admin() {
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
-
-      if (webApp) {
-        // В мини‑приложении открываем файл через Telegram WebApp,
-        // чтобы система предложила сохранить/поделиться документом
-        webApp.openLink(url);
-      } else {
-        // В обычном браузере загружаем файл как обычно
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
       toast.success('CSV экспортирован');
     } catch (error) {
