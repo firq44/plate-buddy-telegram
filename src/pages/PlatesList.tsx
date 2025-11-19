@@ -20,7 +20,7 @@ interface CarPlate {
 }
 
 export default function PlatesList() {
-  const { user } = useTelegram();
+  const { user, webApp } = useTelegram();
   const { isAdmin: userIsAdmin } = useUserAccess();
   const navigate = useNavigate();
   const [plates, setPlates] = useState<CarPlate[]>([]);
@@ -106,6 +106,18 @@ export default function PlatesList() {
   const handleExportPlates = async () => {
     setExportingCsv(true);
     try {
+      // В Telegram Mini App отправляем файл прямо в чат пользователя
+      if (webApp && user) {
+        const { error: funcError } = await supabase.functions.invoke('export-plates', {
+          body: { telegramId: user.id.toString() },
+        });
+
+        if (funcError) throw funcError;
+
+        toast.success('Файл отправлен вам в Telegram');
+        return;
+      }
+
       const { data, error } = await supabase.rpc('get_plate_export_data');
       
       if (error) throw error;
