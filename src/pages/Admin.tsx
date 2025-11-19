@@ -286,6 +286,52 @@ export default function Admin() {
     }
   };
 
+  const handleToggleRole = async (userId: string, telegramIdToToggle: string, currentIsAdmin: boolean) => {
+    if (telegramIdToToggle === '785921635') {
+      toast.error('Невозможно изменить роль супер админа');
+      return;
+    }
+
+    try {
+      if (currentIsAdmin) {
+        // Удаляем роль admin
+        await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId)
+          .eq('role', 'admin');
+
+        toast.success('Роль админа снята');
+      } else {
+        // Добавляем роль admin
+        const { data: existingRole } = await supabase
+          .from('user_roles')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+
+        if (!existingRole) {
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: userId,
+              role: 'admin',
+            });
+
+          if (roleError) throw roleError;
+        }
+
+        toast.success('Пользователь повышен до админа');
+      }
+
+      loadData();
+    } catch (error: any) {
+      console.error('Error toggling role:', error);
+      toast.error(error.message || 'Ошибка при изменении роли');
+    }
+  };
+
   const handleRemoveUser = async (userId: string, telegramIdToRemove: string) => {
     if (telegramIdToRemove === '785921635') {
       toast.error('Невозможно удалить супер админа');
@@ -612,16 +658,35 @@ export default function Admin() {
                         </div>
                       )}
                     </div>
-                    {user.telegram_id !== '785921635' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveUser(user.id, user.telegram_id)}
-                        className="hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {user.telegram_id !== '785921635' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleRole(
+                              user.id, 
+                              user.telegram_id, 
+                              user.user_roles.some(r => r.role === 'admin')
+                            )}
+                            className={user.user_roles.some(r => r.role === 'admin') 
+                              ? "hover:bg-destructive/10 hover:text-destructive" 
+                              : "hover:bg-accent/10 hover:text-accent"}
+                          >
+                            <Shield className="h-4 w-4 mr-1" />
+                            {user.user_roles.some(r => r.role === 'admin') ? 'Снять админа' : 'Сделать админом'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveUser(user.id, user.telegram_id)}
+                            className="hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {users.length === 0 && (
