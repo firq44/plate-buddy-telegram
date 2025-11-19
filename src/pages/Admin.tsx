@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { X, Loader2, UserPlus, Shield, Users, Download, List, Search } from 'lucide-react';
+import { X, Loader2, UserPlus, Shield, Users, Download, List, Search, FileSpreadsheet, FileText } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { useUserAccess } from '@/hooks/useUserAccess';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import * as XLSX from 'xlsx';
 
 interface User {
   id: string;
@@ -48,6 +50,7 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
   const [plateSearchQuery, setPlateSearchQuery] = useState('');
 
   useEffect(() => {
@@ -364,6 +367,73 @@ export default function Admin() {
     }
   };
 
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const { data, error } = await supabase.rpc('get_plate_export_data');
+      
+      if (error) throw error;
+
+      // Подготовка данных для Excel
+      const worksheetData = [
+        ['Номер', 'Telegram ID', 'Username', 'Дата добавления', 'Последняя попытка', 'Попыток'],
+        ...(data || []).map((row: any) => [
+          row.plate_number,
+          row.added_by_telegram_id,
+          row.added_by_username || '',
+          new Date(row.created_at).toLocaleDateString('ru-RU'),
+          row.last_attempt_at ? new Date(row.last_attempt_at).toLocaleDateString('ru-RU') : '',
+          row.attempt_count || 0
+        ])
+      ];
+
+      // Создаем рабочую книгу и лист
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Номера');
+
+      // Настраиваем ширину колонок
+      worksheet['!cols'] = [
+        { wch: 15 }, // Номер
+        { wch: 15 }, // Telegram ID
+        { wch: 20 }, // Username
+        { wch: 15 }, // Дата добавления
+        { wch: 15 }, // Последняя попытка
+        { wch: 10 }  // Попыток
+      ];
+
+      // Генерируем файл
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      
+      const fileName = `plates_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      if (webApp) {
+        // В Telegram Mini App открываем файл во внешнем браузере
+        webApp.openLink(url);
+        toast.success('Excel файл открыт в браузере. Сохраните его или откройте в Google Sheets/Excel.');
+      } else {
+        // В обычном браузере загружаем файл
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
+      URL.revokeObjectURL(url);
+      
+      toast.success('Excel файл экспортирован');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Ошибка экспорта в Excel');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   if (!isAuthorized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -475,19 +545,32 @@ export default function Admin() {
                   <Users className="h-5 w-5 text-accent" />
                   Пользователи ({users.length})
                 </h2>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportPlates}
-                  disabled={exportingCsv}
-                >
-                  {exportingCsv ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  Экспорт CSV
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={exportingCsv || exportingExcel}
+                    >
+                      {exportingCsv || exportingExcel ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      Экспорт
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleExportPlates}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      CSV формат
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportExcel}>
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Excel формат (XLSX)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {users.map((user) => (
@@ -543,19 +626,32 @@ export default function Admin() {
                     p.added_by_telegram_id.includes(plateSearchQuery)
                   ).length})
                 </h2>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportPlates}
-                  disabled={exportingCsv}
-                >
-                  {exportingCsv ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  Экспорт CSV
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={exportingCsv || exportingExcel}
+                    >
+                      {exportingCsv || exportingExcel ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      Экспорт
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleExportPlates}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      CSV формат
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportExcel}>
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Excel формат (XLSX)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               
               <div className="mb-4 relative">
