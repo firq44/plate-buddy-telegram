@@ -51,6 +51,7 @@ export default function Admin() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingUsers, setExportingUsers] = useState(false);
   const [plateSearchQuery, setPlateSearchQuery] = useState('');
 
   useEffect(() => {
@@ -439,6 +440,29 @@ export default function Admin() {
     }
   };
 
+  const handleExportUsers = async () => {
+    setExportingUsers(true);
+    try {
+      if (!telegramUser) {
+        toast.error('Ошибка: не удалось определить пользователя');
+        return;
+      }
+
+      const { error: funcError } = await supabase.functions.invoke('export-users', {
+        body: { telegramId: telegramUser.id.toString() },
+      });
+
+      if (funcError) throw funcError;
+
+      toast.success('Список пользователей отправлен вам в Telegram');
+    } catch (error) {
+      console.error('Error exporting users:', error);
+      toast.error('Ошибка экспорта пользователей');
+    } finally {
+      setExportingUsers(false);
+    }
+  };
+
   if (!isAuthorized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -550,32 +574,19 @@ export default function Admin() {
                   <Users className="h-5 w-5 text-accent" />
                   Пользователи ({users.length})
                 </h2>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={exportingCsv || exportingExcel}
-                    >
-                      {exportingCsv || exportingExcel ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Download className="h-4 w-4 mr-2" />
-                      )}
-                      Экспорт
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleExportPlates}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      CSV формат
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportExcel}>
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
-                      Excel формат (XLSX)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportUsers}
+                  disabled={exportingUsers}
+                >
+                  {exportingUsers ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Экспорт пользователей
+                </Button>
               </div>
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {users.map((user) => (
