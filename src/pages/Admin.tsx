@@ -334,14 +334,32 @@ export default function Admin() {
         ].join(','))
       ].join('\n');
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      // Используем application/octet-stream для принудительного скачивания
+      const blob = new Blob([csv], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      
+      if (webApp) {
+        // В Telegram Mini App используем openTelegramLink для корректного скачивания
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Также показываем уведомление с инструкцией
+        toast.success('Файл готов к скачиванию. Нажмите "Открыть" в браузере.');
+      } else {
+        // В обычном браузере загружаем файл как обычно
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `plates_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
       URL.revokeObjectURL(url);
       
       toast.success('CSV экспортирован');
