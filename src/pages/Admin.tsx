@@ -339,25 +339,31 @@ export default function Admin() {
     }
 
     try {
-      await supabase
+      // Удаляем роли пользователя
+      const { error: rolesError } = await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId);
 
+      if (rolesError) throw rolesError;
+
       // Удаляем все заявки пользователя
-      await supabase
+      const { error: requestsError } = await supabase
         .from('access_requests')
         .delete()
         .eq('telegram_id', telegramIdToRemove);
 
-      const { error } = await supabase
+      if (requestsError) throw requestsError;
+
+      // Удаляем самого пользователя
+      const { error: userError } = await supabase
         .from('users')
         .delete()
         .eq('id', userId);
 
-      if (error) throw error;
+      if (userError) throw userError;
 
-      toast.success('Пользователь удален');
+      toast.success('Пользователь полностью удален');
       loadData();
     } catch (error: any) {
       console.error('Error removing user:', error);
@@ -553,7 +559,14 @@ export default function Admin() {
                           ID: {request.telegram_id}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {new Date(request.created_at).toLocaleString('ru-RU')}
+                          {new Date(request.created_at).toLocaleString('ru-RU', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -752,33 +765,66 @@ export default function Admin() {
                   p.added_by_telegram_id.includes(plateSearchQuery)
                 ).length > 0 ? (
                   <div className="space-y-2">
-                    {plates.filter(p => 
-                      p.plate_number.toLowerCase().includes(plateSearchQuery.toLowerCase()) ||
-                      (p.added_by_username && p.added_by_username.toLowerCase().includes(plateSearchQuery.toLowerCase())) ||
-                      p.added_by_telegram_id.includes(plateSearchQuery)
-                    ).map((plate, index) => (
-                      <div
-                        key={`${plate.plate_number}-${index}`}
-                        className="flex items-center justify-between p-4 bg-secondary rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <div className="font-semibold text-foreground">
-                            {plate.plate_number}
+                    {(() => {
+                      const filteredPlates = plates.filter(p => 
+                        p.plate_number.toLowerCase().includes(plateSearchQuery.toLowerCase()) ||
+                        (p.added_by_username && p.added_by_username.toLowerCase().includes(plateSearchQuery.toLowerCase())) ||
+                        p.added_by_telegram_id.includes(plateSearchQuery)
+                      );
+
+                      // Группируем номера по датам
+                      const groupedPlates: { [key: string]: typeof filteredPlates } = {};
+                      filteredPlates.forEach(plate => {
+                        const dateKey = new Date(plate.created_at).toLocaleDateString('ru-RU', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        });
+                        if (!groupedPlates[dateKey]) {
+                          groupedPlates[dateKey] = [];
+                        }
+                        groupedPlates[dateKey].push(plate);
+                      });
+
+                      return Object.entries(groupedPlates).map(([dateKey, groupPlates]) => (
+                        <div key={dateKey} className="space-y-2">
+                          <div className="flex items-center gap-3 py-2">
+                            <div className="h-px bg-border flex-1" />
+                            <span className="text-sm font-semibold text-muted-foreground px-2">
+                              {dateKey}
+                            </span>
+                            <div className="h-px bg-border flex-1" />
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            Добавил: {plate.added_by_username || plate.added_by_telegram_id}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(plate.created_at).toLocaleString('ru-RU')}
-                          </div>
-                          {plate.attempt_count > 1 && (
-                            <div className="text-xs text-amber-600">
-                              Попыток добавить: {plate.attempt_count}
+                          {groupPlates.map((plate, index) => (
+                            <div
+                              key={`${plate.plate_number}-${index}`}
+                              className="flex items-center justify-between p-4 bg-secondary rounded-lg"
+                            >
+                              <div className="flex-1">
+                                <div className="font-semibold text-foreground">
+                                  {plate.plate_number}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  Добавил: {plate.added_by_username || plate.added_by_telegram_id}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(plate.created_at).toLocaleString('ru-RU', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: false
+                                  })}
+                                </div>
+                                {plate.attempt_count > 1 && (
+                                  <div className="text-xs text-amber-600">
+                                    Попыток добавить: {plate.attempt_count}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          )}
+                          ))}
                         </div>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
                 ) : (
                   <div className="text-center text-muted-foreground py-8">
