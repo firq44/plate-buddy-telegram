@@ -33,6 +33,7 @@ export default function CarChecker() {
       const { data, error } = await supabase
         .from('car_plates')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -75,6 +76,7 @@ export default function CarChecker() {
         .from('car_plates')
         .select('id, last_attempt_at, attempt_count, created_at')
         .eq('plate_number', plateNumber)
+        .is('deleted_at', null)
         .maybeSingle();
 
       if (existing) {
