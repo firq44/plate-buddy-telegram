@@ -27,17 +27,24 @@ export const useUserAccess = () => {
         if (userError) throw userError;
 
         if (userData) {
-          // Check if user has admin role
-          const { data: roleData, error: roleError } = await supabase
+          // Check if user has ANY role (user or admin)
+          const { data: rolesData, error: rolesError } = await supabase
             .from('user_roles')
             .select('role')
-            .eq('user_id', userData.id)
-            .eq('role', 'admin')
-            .maybeSingle();
+            .eq('user_id', userData.id);
 
-          if (roleError) throw roleError;
+          if (rolesError) throw rolesError;
 
-          setIsAdmin(!!roleData);
+          // User exists but has NO roles - they were removed/deleted
+          if (!rolesData || rolesData.length === 0) {
+            setIsAdmin(false);
+            setStatus('no-request');
+            return;
+          }
+
+          // User has at least one role - they have access
+          const hasAdminRole = rolesData.some(r => r.role === 'admin');
+          setIsAdmin(hasAdminRole);
           setStatus('approved');
           return;
         }
