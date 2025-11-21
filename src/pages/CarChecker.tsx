@@ -22,7 +22,7 @@ interface CarPlate {
 
 export default function CarChecker() {
   const { user } = useTelegram();
-  const { isAdmin } = useUserAccess();
+  const { status, isAdmin } = useUserAccess();
   const navigate = useNavigate();
   const [plates, setPlates] = useState<CarPlate[]>([]);
   const [newPlate, setNewPlate] = useState('');
@@ -55,6 +55,13 @@ export default function CarChecker() {
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (status !== 'approved') {
+      navigate('/');
+    }
+  }, [status, navigate]);
 
   const handleAddPlate = async () => {
     if (!newPlate.trim() || !user) return;
