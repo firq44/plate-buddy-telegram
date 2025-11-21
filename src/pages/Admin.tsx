@@ -54,6 +54,7 @@ export default function Admin() {
   const [exportingCsv, setExportingCsv] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingUsers, setExportingUsers] = useState(false);
+  const [exportingDeleted, setExportingDeleted] = useState(false);
   const [plateSearchQuery, setPlateSearchQuery] = useState('');
 
   useEffect(() => {
@@ -551,6 +552,89 @@ export default function Admin() {
     }
   };
 
+  const handleExportDeletedPlates = async () => {
+    setExportingDeleted(true);
+    try {
+      const deletedPlates = plates.filter(p => p.deleted_at);
+      
+      if (deletedPlates.length === 0) {
+        toast.info('Нет удалённых номеров для экспорта');
+        return;
+      }
+
+      // Подготовка данных для Excel
+      const worksheetData = [
+        ['Номер', 'Добавил (ID)', 'Добавил (Username)', 'Дата добавления', 'Удалил (ID)', 'Удалил (Username)', 'Дата удаления', 'Попыток'],
+        ...deletedPlates.map((plate) => {
+          const deleter = plate.deleted_by_telegram_id 
+            ? users.find((u) => u.telegram_id === plate.deleted_by_telegram_id)
+            : null;
+          
+          return [
+            plate.plate_number,
+            plate.added_by_telegram_id,
+            plate.added_by_username || '-',
+            new Date(plate.created_at).toLocaleString('ru-RU', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            plate.deleted_by_telegram_id || '-',
+            deleter ? (deleter.username || deleter.first_name || '-') : '-',
+            plate.deleted_at ? new Date(plate.deleted_at).toLocaleString('ru-RU', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }) : '-',
+            plate.attempt_count || 0
+          ];
+        })
+      ];
+
+      // Создаем рабочую книгу и лист
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Удалённые номера');
+
+      // Настраиваем ширину колонок
+      worksheet['!cols'] = [
+        { wch: 15 }, // Номер
+        { wch: 15 }, // Добавил ID
+        { wch: 20 }, // Добавил Username
+        { wch: 18 }, // Дата добавления
+        { wch: 15 }, // Удалил ID
+        { wch: 20 }, // Удалил Username
+        { wch: 18 }, // Дата удаления
+        { wch: 10 }  // Попыток
+      ];
+
+      // Генерируем файл
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const fileName = `deleted_plates_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success(`История удалений экспортирована (${deletedPlates.length} записей)`);
+    } catch (error) {
+      console.error('Error exporting deleted plates:', error);
+      toast.error('Ошибка экспорта истории удалений');
+    } finally {
+      setExportingDeleted(false);
+    }
+  };
+
   if (!isAuthorized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -756,32 +840,48 @@ export default function Admin() {
                     p.added_by_telegram_id.includes(plateSearchQuery)
                   ).length})
                 </h2>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={exportingCsv || exportingExcel}
-                    >
-                      {exportingCsv || exportingExcel ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Download className="h-4 w-4 mr-2" />
-                      )}
-                      Экспорт
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleExportPlates}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      CSV формат
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportExcel}>
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
-                      Excel формат (XLSX)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportDeletedPlates}
+                    disabled={exportingDeleted || plates.filter(p => p.deleted_at).length === 0}
+                    className="bg-destructive/10 hover:bg-destructive/20 border-destructive/20"
+                  >
+                    {exportingDeleted ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    История удалений ({plates.filter(p => p.deleted_at).length})
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={exportingCsv || exportingExcel}
+                      >
+                        {exportingCsv || exportingExcel ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Экспорт активных
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleExportPlates}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        CSV формат
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportExcel}>
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        Excel формат (XLSX)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
               
               <div className="mb-4 relative">
