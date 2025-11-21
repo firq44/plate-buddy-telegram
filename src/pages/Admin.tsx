@@ -849,7 +849,7 @@ export default function Admin() {
                     p.added_by_telegram_id.includes(plateSearchQuery)
                   ).length})
                 </h2>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
                   <Button
                     variant="outline"
                     size="sm"
