@@ -64,7 +64,13 @@ export const useUserAccess = () => {
         if (requestError) throw requestError;
 
         if (requestData) {
-          setStatus(requestData.status as AccessStatus);
+          // Если заявка "approved", но пользователя в таблице нет — считаем, что доступа нет
+          // (это защита от старых "осиротевших" записей, когда user удалён, а заявка осталась)
+          if (requestData.status === 'approved') {
+            setStatus('no-request');
+          } else {
+            setStatus(requestData.status as AccessStatus);
+          }
         } else {
           setStatus('no-request');
         }
