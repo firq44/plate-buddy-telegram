@@ -37,6 +37,8 @@ interface PlateData {
   created_at: string;
   attempt_count: number;
   last_attempt_at?: string | null;
+  deleted_at?: string | null;
+  deleted_by_telegram_id?: string | null;
 }
 
 export default function Admin() {
@@ -114,11 +116,28 @@ export default function Admin() {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      const { data: platesData } = await supabase.rpc('get_plate_export_data');
+      const { data: platesData } = await supabase
+        .from("car_plates")
+        .select(`
+          *,
+          adder:users!car_plates_added_by_telegram_id_fkey(username, first_name)
+        `)
+        .order("created_at", { ascending: false });
+
+      const transformedPlates = platesData?.map(plate => ({
+        plate_number: plate.plate_number,
+        added_by_telegram_id: plate.added_by_telegram_id,
+        added_by_username: (plate.adder as any)?.username || (plate.adder as any)?.first_name || null,
+        created_at: plate.created_at,
+        attempt_count: plate.attempt_count,
+        last_attempt_at: plate.last_attempt_at,
+        deleted_at: plate.deleted_at,
+        deleted_by_telegram_id: plate.deleted_by_telegram_id
+      })) || [];
 
       if (usersWithRoles) setUsers(usersWithRoles);
       if (requestsData) setAccessRequests(requestsData);
-      if (platesData) setPlates(platesData);
+      if (transformedPlates) setPlates(transformedPlates);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -339,6 +358,23 @@ export default function Admin() {
     }
 
     try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+
+      const currentTelegramId = authUser.user_metadata?.telegram_id;
+
+      // Soft delete all plates by this user
+      const { error: platesError } = await supabase
+        .from('car_plates')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by_telegram_id: currentTelegramId
+        })
+        .eq('added_by_telegram_id', telegramIdToRemove)
+        .is('deleted_at', null);
+
+      if (platesError) throw platesError;
+
       // Удаляем роли пользователя
       const { error: rolesError } = await supabase
         .from('user_roles')
@@ -795,33 +831,58 @@ export default function Admin() {
                             </span>
                             <div className="h-px bg-border flex-1" />
                           </div>
-                          {groupPlates.map((plate, index) => (
-                            <div
-                              key={`${plate.plate_number}-${index}`}
-                              className="flex items-center justify-between p-4 bg-secondary rounded-lg"
-                            >
-                              <div className="flex-1">
-                                <div className="font-semibold text-foreground">
-                                  {plate.plate_number}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  Добавил: {plate.added_by_username || plate.added_by_telegram_id}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(plate.created_at).toLocaleString('ru-RU', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: false
-                                  })}
-                                </div>
-                                {plate.attempt_count > 1 && (
-                                  <div className="text-xs text-amber-600">
-                                    Попыток добавить: {plate.attempt_count}
+                           {groupPlates.map((plate, index) => {
+                            const deleter = plate.deleted_by_telegram_id 
+                              ? users.find((u) => u.telegram_id === plate.deleted_by_telegram_id)
+                              : null;
+                            
+                            return (
+                              <div
+                                key={`${plate.plate_number}-${index}`}
+                                className={`flex items-center justify-between p-4 rounded-lg ${
+                                  plate.deleted_at ? 'bg-destructive/10 border border-destructive/20' : 'bg-secondary'
+                                }`}
+                              >
+                                <div className="flex-1">
+                                  <div className="font-semibold text-foreground flex items-center gap-2">
+                                    {plate.plate_number}
+                                    {plate.deleted_at && (
+                                      <span className="text-xs bg-destructive text-destructive-foreground px-2 py-0.5 rounded">
+                                        УДАЛЕН
+                                      </span>
+                                    )}
                                   </div>
-                                )}
+                                  <div className="text-sm text-muted-foreground">
+                                    Добавил: {plate.added_by_username || plate.added_by_telegram_id}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {new Date(plate.created_at).toLocaleString('ru-RU', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: false
+                                    })}
+                                  </div>
+                                  {plate.deleted_at && (
+                                    <div className="text-xs text-destructive mt-1">
+                                      Удален: {new Date(plate.deleted_at).toLocaleString('ru-RU', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: false
+                                      })} {deleter ? `(${deleter.username || deleter.first_name || plate.deleted_by_telegram_id})` : `(${plate.deleted_by_telegram_id})`}
+                                    </div>
+                                  )}
+                                  {plate.attempt_count > 1 && (
+                                    <div className="text-xs text-amber-600">
+                                      Попыток добавить: {plate.attempt_count}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ));
                     })()}

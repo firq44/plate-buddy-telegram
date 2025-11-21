@@ -35,6 +35,7 @@ export default function PlatesList() {
       const { data, error } = await supabase
         .from('car_plates')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -82,9 +83,18 @@ export default function PlatesList() {
   const handleDeletePlate = async (id: string) => {
     setDeletingIds(prev => new Set(prev).add(id));
     try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+
+      const telegramId = authUser.user_metadata?.telegram_id;
+      if (!telegramId) throw new Error('No Telegram ID found');
+
       const { error } = await supabase
         .from('car_plates')
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by_telegram_id: telegramId
+        })
         .eq('id', id);
 
       if (error) throw error;

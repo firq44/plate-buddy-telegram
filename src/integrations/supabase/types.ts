@@ -49,6 +49,8 @@ export type Database = {
           added_by_telegram_id: string
           attempt_count: number
           created_at: string
+          deleted_at: string | null
+          deleted_by_telegram_id: string | null
           description: string | null
           id: string
           last_attempt_at: string | null
@@ -59,6 +61,8 @@ export type Database = {
           added_by_telegram_id: string
           attempt_count?: number
           created_at?: string
+          deleted_at?: string | null
+          deleted_by_telegram_id?: string | null
           description?: string | null
           id?: string
           last_attempt_at?: string | null
@@ -69,6 +73,8 @@ export type Database = {
           added_by_telegram_id?: string
           attempt_count?: number
           created_at?: string
+          deleted_at?: string | null
+          deleted_by_telegram_id?: string | null
           description?: string | null
           id?: string
           last_attempt_at?: string | null
