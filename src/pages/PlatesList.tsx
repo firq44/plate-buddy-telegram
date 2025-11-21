@@ -22,7 +22,7 @@ interface CarPlate {
 
 export default function PlatesList() {
   const { user, webApp } = useTelegram();
-  const { isAdmin: userIsAdmin } = useUserAccess();
+  const { status, isAdmin: userIsAdmin } = useUserAccess();
   const navigate = useNavigate();
   const [plates, setPlates] = useState<CarPlate[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -79,6 +79,13 @@ export default function PlatesList() {
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (status !== 'approved') {
+      navigate('/');
+    }
+  }, [status, navigate]);
 
   const handleDeletePlate = async (id: string) => {
     setDeletingIds(prev => new Set(prev).add(id));

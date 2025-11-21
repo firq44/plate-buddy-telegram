@@ -43,7 +43,7 @@ interface PlateData {
 
 export default function Admin() {
   const { webApp, user: telegramUser } = useTelegram();
-  const { isAdmin } = useUserAccess();
+  const { status, isAdmin } = useUserAccess();
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
@@ -92,6 +92,13 @@ export default function Admin() {
 
     checkAdminAccess();
   }, [telegramUser, navigate]);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (status !== 'approved' || !isAdmin) {
+      navigate('/');
+    }
+  }, [status, isAdmin, navigate]);
 
   const loadData = async () => {
     try {
