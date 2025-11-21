@@ -97,8 +97,15 @@ export default function PlatesList() {
         })
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
+
       toast.success('Номер удален');
+      
+      // Явно перезагружаем список после удаления
+      await loadPlates();
     } catch (error) {
       console.error('Error deleting plate:', error);
       toast.error('Ошибка при удалении номера');
