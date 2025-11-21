@@ -43,6 +43,20 @@ export const AccessRequest = () => {
 
       if (error) throw error;
 
+      // Отправляем уведомления админам
+      try {
+        await supabase.functions.invoke('notify-admin-new-request', {
+          body: {
+            telegramId: validation.data.telegram_id,
+            username: validation.data.username,
+            firstName: validation.data.first_name,
+          },
+        });
+      } catch (notifyError) {
+        console.error('Failed to send admin notifications:', notifyError);
+        // Не прерываем процесс, если уведомления не отправились
+      }
+
       toast.success('Запрос отправлен', {
         description: 'Администратор рассмотрит ваш запрос',
       });
