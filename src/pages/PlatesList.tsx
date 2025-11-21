@@ -240,10 +240,10 @@ export default function PlatesList() {
             ) : (
               <Tabs value={selectedPeriod} onValueChange={(v) => setSelectedPeriod(v as any)} className="w-full">
                 <TabsList className="grid w-full grid-cols-4 mb-6">
-                  <TabsTrigger value="all">Все ({plates.length})</TabsTrigger>
-                  <TabsTrigger value="today">Сегодня ({filterPlatesByPeriod(plates, 'today').length})</TabsTrigger>
-                  <TabsTrigger value="week">Неделя ({filterPlatesByPeriod(plates, 'week').length})</TabsTrigger>
-                  <TabsTrigger value="month">Месяц ({filterPlatesByPeriod(plates, 'month').length})</TabsTrigger>
+                  <TabsTrigger value="all">All ({plates.length})</TabsTrigger>
+                  <TabsTrigger value="today">Today ({filterPlatesByPeriod(plates, 'today').length})</TabsTrigger>
+                  <TabsTrigger value="week">Week ({filterPlatesByPeriod(plates, 'week').length})</TabsTrigger>
+                  <TabsTrigger value="month">Month ({filterPlatesByPeriod(plates, 'month').length})</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value={selectedPeriod} className="mt-0">
@@ -325,7 +325,7 @@ export default function PlatesList() {
                   </div>
                   {filterPlatesByPeriod(plates).length === 0 && (
                     <div className="text-center text-muted-foreground py-8">
-                      Нет номеров за выбранный период
+                      No plates for selected period
                     </div>
                   )}
                 </TabsContent>
