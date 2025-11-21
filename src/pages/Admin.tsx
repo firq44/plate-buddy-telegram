@@ -161,6 +161,7 @@ export default function Admin() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, loadData)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, loadData)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'access_requests' }, loadData)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'car_plates' }, loadData)
         .subscribe();
 
       return () => {
