@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUserAccess } from '@/hooks/useUserAccess';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 interface CarPlate {
   id: string;
@@ -27,6 +28,7 @@ export default function PlatesList() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   const loadPlates = async () => {
     try {
@@ -101,6 +103,29 @@ export default function PlatesList() {
 
   const canDeletePlate = (plate: CarPlate) => {
     return isAdmin || plate.added_by_telegram_id === user?.id.toString();
+  };
+
+  const filterPlatesByPeriod = (plates: CarPlate[], period: 'all' | 'today' | 'week' | 'month' = selectedPeriod) => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Понедельник
+    startOfWeek.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return plates.filter(plate => {
+      const plateDate = new Date(plate.created_at);
+      switch (period) {
+        case 'today':
+          return plateDate >= startOfToday;
+        case 'week':
+          return plateDate >= startOfWeek;
+        case 'month':
+          return plateDate >= startOfMonth;
+        default:
+          return true;
+      }
+    });
   };
 
   const handleExportPlates = async () => {
@@ -213,80 +238,98 @@ export default function PlatesList() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {plates.map((plate) => {
-                  const match = plate.plate_number.match(/^([A-Z]{2,3})(.+)$/);
-                  const letters = match ? match[1] : '';
-                  const numbers = match ? match[2] : '';
-                  
-                  return (
-                    <div
-                      key={plate.id}
-                      className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-stretch bg-white rounded-lg overflow-hidden shadow-md border-2 border-black">
-                          <div className="bg-[#4169E1] text-white px-3 flex flex-col items-center justify-center gap-0.5">
-                            <span className="text-base">🇵🇱</span>
-                            <span className="text-xs font-bold leading-none">PL</span>
-                          </div>
-                          <div className="px-3 py-2 bg-[#E8EDF2] flex items-center gap-2">
-                            <span className="text-lg font-bold text-black tracking-wider">{letters}</span>
-                            <span className="text-lg font-bold text-black tracking-wider">{numbers}</span>
-                          </div>
-                        </div>
-                        {canDeletePlate(plate) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeletePlate(plate.id)}
-                            disabled={deletingIds.has(plate.id)}
-                            className="hover:bg-red-50 hover:text-red-600"
-                          >
-                            {deletingIds.has(plate.id) ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 text-red-500" />
+              <Tabs value={selectedPeriod} onValueChange={(v) => setSelectedPeriod(v as any)} className="w-full">
+                <TabsList className="grid w-full grid-cols-4 mb-6">
+                  <TabsTrigger value="all">Все ({plates.length})</TabsTrigger>
+                  <TabsTrigger value="today">Сегодня ({filterPlatesByPeriod(plates, 'today').length})</TabsTrigger>
+                  <TabsTrigger value="week">Неделя ({filterPlatesByPeriod(plates, 'week').length})</TabsTrigger>
+                  <TabsTrigger value="month">Месяц ({filterPlatesByPeriod(plates, 'month').length})</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value={selectedPeriod} className="mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filterPlatesByPeriod(plates).map((plate) => {
+                      const match = plate.plate_number.match(/^([A-Z]{2,3})(.+)$/);
+                      const letters = match ? match[1] : '';
+                      const numbers = match ? match[2] : '';
+                      
+                      return (
+                        <div
+                          key={plate.id}
+                          className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-stretch bg-white rounded-lg overflow-hidden shadow-md border-2 border-black">
+                              <div className="bg-[#4169E1] text-white px-3 flex flex-col items-center justify-center gap-0.5">
+                                <span className="text-base">🇵🇱</span>
+                                <span className="text-xs font-bold leading-none">PL</span>
+                              </div>
+                              <div className="px-3 py-2 bg-[#E8EDF2] flex items-center gap-2">
+                                <span className="text-lg font-bold text-black tracking-wider">{letters}</span>
+                                <span className="text-lg font-bold text-black tracking-wider">{numbers}</span>
+                              </div>
+                            </div>
+                            {canDeletePlate(plate) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeletePlate(plate.id)}
+                                disabled={deletingIds.has(plate.id)}
+                                className="hover:bg-red-50 hover:text-red-600"
+                              >
+                                {deletingIds.has(plate.id) ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                )}
+                              </Button>
                             )}
-                          </Button>
-                        )}
-                      </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Added:</span>
-                          <span className="text-foreground font-medium">
-                            {new Date(plate.created_at).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </div>
-                        {plate.last_attempt_at && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Last attempt:</span>
-                            <span className="text-foreground font-medium">
-                              {new Date(plate.last_attempt_at).toLocaleString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
                           </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Attempts:</span>
-                          <span className="text-red-600 font-bold">{plate.attempt_count}</span>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Added:</span>
+                              <span className="text-foreground font-medium">
+                                {new Date(plate.created_at).toLocaleString('ru-RU', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: false
+                                })}
+                              </span>
+                            </div>
+                            {plate.last_attempt_at && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Last attempt:</span>
+                                <span className="text-foreground font-medium">
+                                  {new Date(plate.last_attempt_at).toLocaleString('ru-RU', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: false
+                                  })}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Attempts:</span>
+                              <span className="text-red-600 font-bold">{plate.attempt_count}</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      );
+                    })}
+                  </div>
+                  {filterPlatesByPeriod(plates).length === 0 && (
+                    <div className="text-center text-muted-foreground py-8">
+                      Нет номеров за выбранный период
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             )}
           </div>
         </main>
