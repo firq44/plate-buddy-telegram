@@ -111,12 +111,14 @@ export default function Admin() {
         .from('user_roles')
         .select('user_id, role');
 
-      const usersWithRoles = (usersData || []).map(user => ({
-        ...user,
-        user_roles: (rolesData || [])
-          .filter(r => r.user_id === user.id)
-          .map(r => ({ role: r.role as 'admin' | 'user' }))
-      }));
+      const usersWithRoles = (usersData || [])
+        .map(user => ({
+          ...user,
+          user_roles: (rolesData || [])
+            .filter(r => r.user_id === user.id)
+            .map(r => ({ role: r.role as 'admin' | 'user' }))
+        }))
+        .filter(user => user.user_roles.length > 0); // Показываем только пользователей с ролями
 
       const { data: requestsData } = await supabase
         .from('access_requests')
