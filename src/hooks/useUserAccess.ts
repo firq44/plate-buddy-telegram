@@ -37,6 +37,9 @@ export const useUserAccess = () => {
 
           // User exists but has NO roles - they were removed/deleted
           if (!rolesData || rolesData.length === 0) {
+            console.log('User has no roles, logging out...');
+            // Sign out the user to clear their session
+            await supabase.auth.signOut();
             setIsAdmin(false);
             setStatus('no-request');
             return;
@@ -93,6 +96,15 @@ export const useUserAccess = () => {
           schema: 'public',
           table: 'access_requests',
           filter: `telegram_id=eq.${user.id}`,
+        },
+        () => checkAccess()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_roles',
         },
         () => checkAccess()
       )
