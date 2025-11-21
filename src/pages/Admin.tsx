@@ -126,22 +126,23 @@ export default function Admin() {
 
       const { data: platesData } = await supabase
         .from("car_plates")
-        .select(`
-          *,
-          adder:users!car_plates_added_by_telegram_id_fkey(username, first_name)
-        `)
+        .select('*')
         .order("created_at", { ascending: false });
 
-      const transformedPlates = platesData?.map(plate => ({
-        plate_number: plate.plate_number,
-        added_by_telegram_id: plate.added_by_telegram_id,
-        added_by_username: (plate.adder as any)?.username || (plate.adder as any)?.first_name || null,
-        created_at: plate.created_at,
-        attempt_count: plate.attempt_count,
-        last_attempt_at: plate.last_attempt_at,
-        deleted_at: plate.deleted_at,
-        deleted_by_telegram_id: plate.deleted_by_telegram_id
-      })) || [];
+      // Manually join plates with users by telegram_id
+      const transformedPlates = platesData?.map(plate => {
+        const adder = usersData?.find(u => u.telegram_id === plate.added_by_telegram_id);
+        return {
+          plate_number: plate.plate_number,
+          added_by_telegram_id: plate.added_by_telegram_id,
+          added_by_username: adder?.username || adder?.first_name || null,
+          created_at: plate.created_at,
+          attempt_count: plate.attempt_count,
+          last_attempt_at: plate.last_attempt_at,
+          deleted_at: plate.deleted_at,
+          deleted_by_telegram_id: plate.deleted_by_telegram_id
+        };
+      }) || [];
 
       if (usersWithRoles) setUsers(usersWithRoles);
       if (requestsData) setAccessRequests(requestsData);
