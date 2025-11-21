@@ -564,6 +564,11 @@ export default function Admin() {
   const handleExportDeletedPlates = async () => {
     setExportingDeleted(true);
     try {
+      if (!telegramUser) {
+        toast.error('Ошибка: не удалось определить пользователя');
+        return;
+      }
+
       const deletedPlates = plates.filter(p => p.deleted_at);
       
       if (deletedPlates.length === 0) {
@@ -571,71 +576,13 @@ export default function Admin() {
         return;
       }
 
-      // Подготовка данных для Excel
-      const worksheetData = [
-        ['Номер', 'Добавил (ID)', 'Добавил (Username)', 'Дата добавления', 'Удалил (ID)', 'Удалил (Username)', 'Дата удаления', 'Попыток'],
-        ...deletedPlates.map((plate) => {
-          const deleter = plate.deleted_by_telegram_id 
-            ? users.find((u) => u.telegram_id === plate.deleted_by_telegram_id)
-            : null;
-          
-          return [
-            plate.plate_number,
-            plate.added_by_telegram_id,
-            plate.added_by_username || '-',
-            new Date(plate.created_at).toLocaleString('ru-RU', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            plate.deleted_by_telegram_id || '-',
-            deleter ? (deleter.username || deleter.first_name || '-') : '-',
-            plate.deleted_at ? new Date(plate.deleted_at).toLocaleString('ru-RU', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            }) : '-',
-            plate.attempt_count || 0
-          ];
-        })
-      ];
+      const { error: funcError } = await supabase.functions.invoke('export-deleted-plates', {
+        body: { telegramId: telegramUser.id.toString() },
+      });
 
-      // Создаем рабочую книгу и лист
-      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Удалённые номера');
+      if (funcError) throw funcError;
 
-      // Настраиваем ширину колонок
-      worksheet['!cols'] = [
-        { wch: 15 }, // Номер
-        { wch: 15 }, // Добавил ID
-        { wch: 20 }, // Добавил Username
-        { wch: 18 }, // Дата добавления
-        { wch: 15 }, // Удалил ID
-        { wch: 20 }, // Удалил Username
-        { wch: 18 }, // Дата удаления
-        { wch: 10 }  // Попыток
-      ];
-
-      // Генерируем файл
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = URL.createObjectURL(blob);
-      const fileName = `deleted_plates_${new Date().toISOString().split('T')[0]}.xlsx`;
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      toast.success(`История удалений экспортирована (${deletedPlates.length} записей)`);
+      toast.success('История удалений отправлена вам в Telegram');
     } catch (error) {
       console.error('Error exporting deleted plates:', error);
       toast.error('Ошибка экспорта истории удалений');
