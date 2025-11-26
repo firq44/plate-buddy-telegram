@@ -11,11 +11,18 @@ import { PlateInput } from '@/components/PlateInput';
 import { useUserAccess } from '@/hooks/useUserAccess';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface CarPlate {
   id: string;
   plate_number: string;
   description: string | null;
+  color: string | null;
+  brand: string | null;
+  model: string | null;
   added_by_telegram_id: string;
   created_at: string;
 }
@@ -27,6 +34,11 @@ export default function CarChecker() {
   const [plates, setPlates] = useState<CarPlate[]>([]);
   const [newPlate, setNewPlate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [carColor, setCarColor] = useState('');
+  const [carBrand, setCarBrand] = useState('');
+  const [carModel, setCarModel] = useState('');
+  const [carDescription, setCarDescription] = useState('');
 
   const loadPlates = async () => {
     try {
@@ -63,14 +75,37 @@ export default function CarChecker() {
     }
   }, [status, navigate]);
 
+  const handleOpenSheet = () => {
+    if (!newPlate.trim()) return;
+
+    const plateNumber = newPlate.trim().toUpperCase().replace(/\s/g, '');
+    const validation = plateSchema.safeParse({ plate_number: plateNumber });
+    
+    if (!validation.success) {
+      toast.error('Validation Error', {
+        description: validation.error.issues[0].message,
+      });
+      return;
+    }
+
+    setIsSheetOpen(true);
+  };
+
   const handleAddPlate = async () => {
     if (!newPlate.trim() || !user) return;
 
     const plateNumber = newPlate.trim().toUpperCase().replace(/\s/g, '');
 
-    const validation = plateSchema.safeParse({ plate_number: plateNumber });
+    const validation = plateSchema.safeParse({ 
+      plate_number: plateNumber,
+      color: carColor,
+      brand: carBrand,
+      model: carModel,
+      description: carDescription
+    });
+    
     if (!validation.success) {
-      toast.error('Ошибка валидации', {
+      toast.error('Validation Error', {
         description: validation.error.issues[0].message,
       });
       return;
@@ -104,14 +139,14 @@ export default function CarChecker() {
           })
           .eq('id', existing.id);
 
-        const addedDateTime = new Date(existing.created_at).toLocaleString('ru-RU', {
+        const addedDateTime = new Date(existing.created_at).toLocaleString('en-US', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
         });
-        const lastAttemptDateTime = now.toLocaleString('ru-RU', {
+        const lastAttemptDateTime = now.toLocaleString('en-US', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -119,11 +154,16 @@ export default function CarChecker() {
           minute: '2-digit'
         });
         
-        toast.error('Номер уже добавлен', {
-          description: `Добавлен: ${addedDateTime}\nПопыток: ${newAttemptCount}\nПоследняя попытка: ${lastAttemptDateTime}`,
+        toast.error('Plate Already Added', {
+          description: `Added: ${addedDateTime}\nAttempts: ${newAttemptCount}\nLast attempt: ${lastAttemptDateTime}`,
           duration: 5000,
         });
+        setIsSheetOpen(false);
         setNewPlate('');
+        setCarColor('');
+        setCarBrand('');
+        setCarModel('');
+        setCarDescription('');
         setIsLoading(false);
         return;
       }
@@ -133,6 +173,10 @@ export default function CarChecker() {
         .insert({
           plate_number: plateNumber,
           added_by_telegram_id: user.id.toString(),
+          color: carColor || null,
+          brand: carBrand || null,
+          model: carModel || null,
+          description: carDescription || null,
         });
 
       if (insertError) throw insertError;
@@ -143,11 +187,16 @@ export default function CarChecker() {
         success: true,
       });
 
-      toast.success('Номер добавлен');
+      toast.success('Plate Added Successfully');
+      setIsSheetOpen(false);
       setNewPlate('');
+      setCarColor('');
+      setCarBrand('');
+      setCarModel('');
+      setCarDescription('');
     } catch (error) {
       console.error('Error adding plate:', error);
-      toast.error('Ошибка при добавлении номера');
+      toast.error('Error Adding Plate');
     } finally {
       setIsLoading(false);
     }
@@ -185,22 +234,15 @@ export default function CarChecker() {
                 </div>
 
                 <Button
-                  onClick={handleAddPlate}
-                  disabled={isLoading || !newPlate.trim()}
+                  onClick={handleOpenSheet}
+                  disabled={!newPlate.trim()}
                   className={`w-full h-12 text-base font-medium text-white transition-colors ${
                     newPlate.trim() 
                       ? 'bg-[#0052CC] hover:bg-[#0747A6]' 
                       : 'bg-[#B3D4F5] cursor-not-allowed'
                   }`}
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    'Add Plate'
-                  )}
+                  Add Plate
                 </Button>
 
                 <Button
@@ -219,6 +261,79 @@ export default function CarChecker() {
             </Card>
           </div>
         </main>
+
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Add Car Details</SheetTitle>
+              <SheetDescription>
+                Enter additional information about the vehicle (optional)
+              </SheetDescription>
+            </SheetHeader>
+            
+            <div className="space-y-4 mt-6">
+              <div>
+                <Label htmlFor="color">Car Color</Label>
+                <Input
+                  id="color"
+                  placeholder="e.g., Black, White, Red"
+                  value={carColor}
+                  onChange={(e) => setCarColor(e.target.value)}
+                  maxLength={50}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="brand">Brand</Label>
+                <Input
+                  id="brand"
+                  placeholder="e.g., BMW, Toyota, Mercedes"
+                  value={carBrand}
+                  onChange={(e) => setCarBrand(e.target.value)}
+                  maxLength={100}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="model">Model</Label>
+                <Input
+                  id="model"
+                  placeholder="e.g., 3 Series, Camry, E-Class"
+                  value={carModel}
+                  onChange={(e) => setCarModel(e.target.value)}
+                  maxLength={100}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="description">Additional Comment</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Any additional notes about this vehicle..."
+                  value={carDescription}
+                  onChange={(e) => setCarDescription(e.target.value)}
+                  maxLength={500}
+                  rows={4}
+                />
+              </div>
+
+              <Button
+                onClick={handleAddPlate}
+                disabled={isLoading}
+                className="w-full h-12 bg-[#0052CC] hover:bg-[#0747A6] text-white"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  'Save Plate'
+                )}
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </SidebarProvider>
   );
