@@ -184,8 +184,12 @@ export type Database = {
           added_by_telegram_id: string
           added_by_username: string
           attempt_count: number
+          brand: string
+          color: string
           created_at: string
+          description: string
           last_attempt_at: string
+          model: string
           plate_number: string
         }[]
       }

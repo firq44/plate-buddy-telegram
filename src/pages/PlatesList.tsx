@@ -178,15 +178,22 @@ export default function PlatesList() {
       if (error) throw error;
 
       const csv = [
-        ['Номер', 'Telegram ID', 'Username', 'Дата добавления', 'Последняя попытка', 'Попыток'].join(','),
-        ...(data || []).map((row: any) => [
-          row.plate_number,
-          row.added_by_telegram_id,
-          row.added_by_username || '',
-          new Date(row.created_at).toLocaleDateString('ru-RU'),
-          row.last_attempt_at ? new Date(row.last_attempt_at).toLocaleDateString('ru-RU') : '',
-          row.attempt_count || 0
-        ].join(','))
+        ['Plate Number', 'Telegram ID', 'Username', 'Date Added', 'Last Attempt', 'Attempts', 'Color', 'Brand', 'Model', 'Description'].join(','),
+        ...(data || []).map((row: any) => {
+          const description = row.description ? `"${row.description.replace(/"/g, '""')}"` : '';
+          return [
+            row.plate_number,
+            row.added_by_telegram_id,
+            row.added_by_username || '',
+            new Date(row.created_at).toLocaleDateString('en-US'),
+            row.last_attempt_at ? new Date(row.last_attempt_at).toLocaleDateString('en-US') : '',
+            row.attempt_count || 0,
+            row.color || '',
+            row.brand || '',
+            row.model || '',
+            description
+          ].join(',');
+        })
       ].join('\n');
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
