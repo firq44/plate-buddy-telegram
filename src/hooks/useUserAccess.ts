@@ -8,6 +8,7 @@ export const useUserAccess = () => {
   const { user, isReady } = useTelegram();
   const [status, setStatus] = useState<AccessStatus>('loading');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   useEffect(() => {
     if (!isReady || !user) {
@@ -15,8 +16,42 @@ export const useUserAccess = () => {
       return;
     }
 
+    // Wait for Supabase session to be established
+    const waitForSession = async () => {
+      setIsCheckingSession(true);
+      try {
+        // Wait a bit for auth session to be set
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Verify session exists
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // Wait a bit more and try again
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+
+    waitForSession();
+  }, [isReady, user]);
+
+  useEffect(() => {
+    if (!isReady || !user || isCheckingSession) {
+      return;
+    }
+
     const checkAccess = async () => {
       try {
+        // Verify we have a valid session before checking roles
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.log('No session found, waiting...');
+          setStatus('loading');
+          return;
+        }
+
         // Check if user exists and get their ID
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -119,7 +154,7 @@ export const useUserAccess = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, isReady]);
+  }, [user, isReady, isCheckingSession]);
 
   return { status, isAdmin };
 };
