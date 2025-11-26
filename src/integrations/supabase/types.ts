@@ -48,36 +48,45 @@ export type Database = {
         Row: {
           added_by_telegram_id: string
           attempt_count: number
+          brand: string | null
+          color: string | null
           created_at: string
           deleted_at: string | null
           deleted_by_telegram_id: string | null
           description: string | null
           id: string
           last_attempt_at: string | null
+          model: string | null
           plate_number: string
           updated_at: string
         }
         Insert: {
           added_by_telegram_id: string
           attempt_count?: number
+          brand?: string | null
+          color?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by_telegram_id?: string | null
           description?: string | null
           id?: string
           last_attempt_at?: string | null
+          model?: string | null
           plate_number: string
           updated_at?: string
         }
         Update: {
           added_by_telegram_id?: string
           attempt_count?: number
+          brand?: string | null
+          color?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by_telegram_id?: string | null
           description?: string | null
           id?: string
           last_attempt_at?: string | null
+          model?: string | null
           plate_number?: string
           updated_at?: string
         }

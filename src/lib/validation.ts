@@ -6,6 +6,18 @@ export const plateSchema = z.object({
     .min(1, 'Plate number required')
     .max(20, 'Plate number too long')
     .regex(/^[A-Z0-9\s-]+$/, 'Only letters, numbers, spaces and dashes allowed'),
+  color: z.string()
+    .trim()
+    .max(50, 'Color too long')
+    .optional(),
+  brand: z.string()
+    .trim()
+    .max(100, 'Brand too long')
+    .optional(),
+  model: z.string()
+    .trim()
+    .max(100, 'Model too long')
+    .optional(),
   description: z.string()
     .trim()
     .max(500, 'Description too long')

@@ -9,11 +9,15 @@ import { useUserAccess } from '@/hooks/useUserAccess';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface CarPlate {
   id: string;
   plate_number: string;
   description: string | null;
+  color: string | null;
+  brand: string | null;
+  model: string | null;
   added_by_telegram_id: string;
   created_at: string;
   last_attempt_at: string | null;
@@ -29,6 +33,8 @@ export default function PlatesList() {
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [exportingCsv, setExportingCsv] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [selectedPlate, setSelectedPlate] = useState<CarPlate | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const loadPlates = async () => {
     try {
@@ -283,7 +289,13 @@ export default function PlatesList() {
                           className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
                         >
                           <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-stretch bg-white rounded-lg overflow-hidden shadow-md border-2 border-black">
+                            <div 
+                              className="flex items-stretch bg-white rounded-lg overflow-hidden shadow-md border-2 border-black cursor-pointer hover:shadow-lg transition-shadow"
+                              onClick={() => {
+                                setSelectedPlate(plate);
+                                setIsDetailsOpen(true);
+                              }}
+                            >
                               <div className="bg-[#4169E1] text-white px-3 flex flex-col items-center justify-center gap-0.5">
                                 <span className="text-base">🇵🇱</span>
                                 <span className="text-xs font-bold leading-none">PL</span>
@@ -313,7 +325,7 @@ export default function PlatesList() {
                             <div className="flex justify-between">
                               <span className="text-gray-600">Added:</span>
                               <span className="text-foreground font-medium">
-                                {new Date(plate.created_at).toLocaleString('ru-RU', {
+                                {new Date(plate.created_at).toLocaleString('en-US', {
                                   day: '2-digit',
                                   month: '2-digit',
                                   year: 'numeric',
@@ -327,7 +339,7 @@ export default function PlatesList() {
                               <div className="flex justify-between">
                                 <span className="text-gray-600">Last attempt:</span>
                                 <span className="text-foreground font-medium">
-                                  {new Date(plate.last_attempt_at).toLocaleString('ru-RU', {
+                                  {new Date(plate.last_attempt_at).toLocaleString('en-US', {
                                     day: '2-digit',
                                     month: '2-digit',
                                     year: 'numeric',
@@ -357,6 +369,91 @@ export default function PlatesList() {
             )}
           </div>
         </main>
+
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Vehicle Details</DialogTitle>
+              <DialogDescription>
+                Additional information about this vehicle
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedPlate && (
+              <div className="space-y-4">
+                <div className="flex justify-center mb-4">
+                  <div className="flex items-stretch bg-white rounded-lg overflow-hidden shadow-md border-2 border-black">
+                    <div className="bg-[#4169E1] text-white px-4 flex flex-col items-center justify-center gap-0.5">
+                      <span className="text-xl">🇵🇱</span>
+                      <span className="text-sm font-bold leading-none">PL</span>
+                    </div>
+                    <div className="px-4 py-3 bg-[#E8EDF2] flex items-center gap-2">
+                      <span className="text-2xl font-bold text-black tracking-wider">
+                        {selectedPlate.plate_number}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {selectedPlate.color && (
+                    <div className="border-b pb-2">
+                      <span className="text-sm text-muted-foreground">Color:</span>
+                      <p className="text-base font-medium">{selectedPlate.color}</p>
+                    </div>
+                  )}
+                  
+                  {selectedPlate.brand && (
+                    <div className="border-b pb-2">
+                      <span className="text-sm text-muted-foreground">Brand:</span>
+                      <p className="text-base font-medium">{selectedPlate.brand}</p>
+                    </div>
+                  )}
+                  
+                  {selectedPlate.model && (
+                    <div className="border-b pb-2">
+                      <span className="text-sm text-muted-foreground">Model:</span>
+                      <p className="text-base font-medium">{selectedPlate.model}</p>
+                    </div>
+                  )}
+                  
+                  {selectedPlate.description && (
+                    <div className="border-b pb-2">
+                      <span className="text-sm text-muted-foreground">Additional Notes:</span>
+                      <p className="text-base">{selectedPlate.description}</p>
+                    </div>
+                  )}
+
+                  {!selectedPlate.color && !selectedPlate.brand && !selectedPlate.model && !selectedPlate.description && (
+                    <div className="text-center py-4 text-muted-foreground">
+                      No additional details available for this vehicle
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-4 border-t space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Added:</span>
+                    <span className="font-medium">
+                      {new Date(selectedPlate.created_at).toLocaleString('en-US', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Attempts:</span>
+                    <span className="font-bold text-red-600">{selectedPlate.attempt_count}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </SidebarProvider>
   );
