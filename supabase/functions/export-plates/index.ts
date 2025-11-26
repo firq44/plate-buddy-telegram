@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     const rows = (data as any[]) || [];
 
-    const header = ['Номер', 'Telegram ID', 'Username', 'Дата добавления', 'Последняя попытка', 'Попыток'];
+    const header = ['Plate Number', 'Telegram ID', 'Username', 'Date Added', 'Last Attempt', 'Attempts', 'Color', 'Brand', 'Model', 'Description'];
     const csvLines = [
       header.join(','),
       ...rows.map((row) => {
@@ -61,6 +61,10 @@ Deno.serve(async (req) => {
         const lastAttempt = row.last_attempt_at ? String(row.last_attempt_at).slice(0, 10) : '';
         const attemptCount = row.attempt_count ?? 0;
         const username = row.added_by_username ?? '';
+        const color = row.color ?? '';
+        const brand = row.brand ?? '';
+        const model = row.model ?? '';
+        const description = row.description ? `"${row.description.replace(/"/g, '""')}"` : '';
 
         return [
           row.plate_number,
@@ -69,6 +73,10 @@ Deno.serve(async (req) => {
           created,
           lastAttempt,
           attemptCount,
+          color,
+          brand,
+          model,
+          description,
         ].join(',');
       }),
     ];
