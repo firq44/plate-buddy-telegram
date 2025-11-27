@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegram } from '@/contexts/TelegramContext';
 
@@ -9,6 +9,8 @@ export const useUserAccess = () => {
   const [status, setStatus] = useState<AccessStatus>('loading');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isReady || !user) {
@@ -42,15 +44,36 @@ export const useUserAccess = () => {
       return;
     }
 
+    const MAX_RETRIES = 5;
+
     const checkAccess = async () => {
       try {
         // Verify we have a valid session before checking roles
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           console.log('No session found, waiting...');
-          setStatus('loading');
+
+          if (retryCountRef.current < MAX_RETRIES) {
+            retryCountRef.current += 1;
+
+            if (retryTimeoutRef.current) {
+              clearTimeout(retryTimeoutRef.current);
+            }
+
+            retryTimeoutRef.current = window.setTimeout(() => {
+              checkAccess();
+            }, 800);
+
+            setStatus('loading');
+          } else {
+            console.log('No session found after retries, treating as no-request');
+            setStatus('no-request');
+          }
           return;
         }
+
+        // Reset retry counter once we have a session
+        retryCountRef.current = 0;
 
         // Check if user exists and get their ID
         const { data: userData, error: userError } = await supabase
@@ -99,8 +122,7 @@ export const useUserAccess = () => {
         if (requestError) throw requestError;
 
         if (requestData) {
-          // Если заявка "approved", но пользователя в таблице нет — считаем, что доступа нет
-          // (это защита от старых "осиротевших" записей, когда user удалён, а заявка осталась)
+          // If request is "approved" but user record doesn't exist, treat as no access
           if (requestData.status === 'approved') {
             setStatus('no-request');
           } else {
@@ -152,6 +174,10 @@ export const useUserAccess = () => {
       .subscribe();
 
     return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
       supabase.removeChannel(channel);
     };
   }, [user, isReady, isCheckingSession]);
