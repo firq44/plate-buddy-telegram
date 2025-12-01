@@ -311,6 +311,37 @@ export default function PlatesList() {
     }
   };
 
+  const handleDecrementAttempt = async () => {
+    if (!selectedPlate || selectedPlate.attempt_count === 0) return;
+    
+    setIsIncrementingAttempt(true);
+    try {
+      const { error } = await supabase
+        .from('car_plates')
+        .update({
+          attempt_count: Math.max(0, selectedPlate.attempt_count - 1),
+          last_attempt_at: new Date().toISOString(),
+        })
+        .eq('id', selectedPlate.id);
+
+      if (error) throw error;
+
+      toast.success('Attempt count updated');
+      await loadPlates();
+      
+      // Update selected plate with new data
+      const updatedPlate = plates.find(p => p.id === selectedPlate.id);
+      if (updatedPlate) {
+        setSelectedPlate(updatedPlate);
+      }
+    } catch (error) {
+      console.error('Error decrementing attempt:', error);
+      toast.error('Error updating attempt count');
+    } finally {
+      setIsIncrementingAttempt(false);
+    }
+  };
+
   const handleExportPlates = async () => {
     setExportingCsv(true);
     try {
@@ -751,8 +782,21 @@ export default function PlatesList() {
                       </div>
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground">Attempts:</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-red-600">{selectedPlate.attempt_count}</span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleDecrementAttempt}
+                            disabled={isIncrementingAttempt || selectedPlate.attempt_count === 0}
+                            className="h-7 px-2 text-xs"
+                          >
+                            {isIncrementingAttempt ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              '-1'
+                            )}
+                          </Button>
+                          <span className="font-bold text-red-600 min-w-[20px] text-center">{selectedPlate.attempt_count}</span>
                           <Button
                             size="sm"
                             variant="outline"
