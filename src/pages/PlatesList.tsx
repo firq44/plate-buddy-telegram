@@ -47,6 +47,7 @@ export default function PlatesList() {
   const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
   const [editPhotoPreview, setEditPhotoPreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isIncrementingAttempt, setIsIncrementingAttempt] = useState(false);
 
   const loadPlates = async () => {
     try {
@@ -276,6 +277,37 @@ export default function PlatesList() {
       toast.error('Error updating plate');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleIncrementAttempt = async () => {
+    if (!selectedPlate) return;
+    
+    setIsIncrementingAttempt(true);
+    try {
+      const { error } = await supabase
+        .from('car_plates')
+        .update({
+          attempt_count: selectedPlate.attempt_count + 1,
+          last_attempt_at: new Date().toISOString(),
+        })
+        .eq('id', selectedPlate.id);
+
+      if (error) throw error;
+
+      toast.success('Attempt count updated');
+      await loadPlates();
+      
+      // Update selected plate with new data
+      const updatedPlate = plates.find(p => p.id === selectedPlate.id);
+      if (updatedPlate) {
+        setSelectedPlate(updatedPlate);
+      }
+    } catch (error) {
+      console.error('Error incrementing attempt:', error);
+      toast.error('Error updating attempt count');
+    } finally {
+      setIsIncrementingAttempt(false);
     }
   };
 
@@ -717,9 +749,24 @@ export default function PlatesList() {
                           })}
                         </span>
                       </div>
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground">Attempts:</span>
-                        <span className="font-bold text-red-600">{selectedPlate.attempt_count}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-red-600">{selectedPlate.attempt_count}</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleIncrementAttempt}
+                            disabled={isIncrementingAttempt}
+                            className="h-7 px-2 text-xs"
+                          >
+                            {isIncrementingAttempt ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              '+1'
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </>
