@@ -57,6 +57,7 @@ export type Database = {
           id: string
           last_attempt_at: string | null
           model: string | null
+          photo_url: string | null
           plate_number: string
           updated_at: string
         }
@@ -72,6 +73,7 @@ export type Database = {
           id?: string
           last_attempt_at?: string | null
           model?: string | null
+          photo_url?: string | null
           plate_number: string
           updated_at?: string
         }
@@ -87,6 +89,7 @@ export type Database = {
           id?: string
           last_attempt_at?: string | null
           model?: string | null
+          photo_url?: string | null
           plate_number?: string
           updated_at?: string
         }

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { List, Loader2 } from 'lucide-react';
+import { List, Loader2, Upload, X } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { plateSchema } from '@/lib/validation';
@@ -23,6 +23,7 @@ interface CarPlate {
   color: string | null;
   brand: string | null;
   model: string | null;
+  photo_url: string | null;
   added_by_telegram_id: string;
   created_at: string;
 }
@@ -39,6 +40,8 @@ export default function CarChecker() {
   const [carBrand, setCarBrand] = useState('');
   const [carModel, setCarModel] = useState('');
   const [carDescription, setCarDescription] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const loadPlates = async () => {
     try {
@@ -91,29 +94,68 @@ export default function CarChecker() {
     setIsSheetOpen(true);
   };
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Photo too large', { description: 'Maximum size is 5MB' });
+        return;
+      }
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddPlate = async () => {
     if (!newPlate.trim() || !user) return;
 
     const plateNumber = newPlate.trim().toUpperCase().replace(/\s/g, '');
 
-    const validation = plateSchema.safeParse({ 
-      plate_number: plateNumber,
-      color: carColor,
-      brand: carBrand,
-      model: carModel,
-      description: carDescription
-    });
-    
-    if (!validation.success) {
-      toast.error('Validation Error', {
-        description: validation.error.issues[0].message,
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
+      let photoUrl: string | null = null;
+
+      // Upload photo if provided
+      if (photoFile) {
+        const fileExt = photoFile.name.split('.').pop();
+        const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('car-photos')
+          .upload(filePath, photoFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('car-photos')
+          .getPublicUrl(filePath);
+
+        photoUrl = publicUrl;
+      }
+
+      const validation = plateSchema.safeParse({ 
+        plate_number: plateNumber,
+        color: carColor,
+        brand: carBrand,
+        model: carModel,
+        description: carDescription,
+        photo_url: photoUrl
+      });
+      
+      if (!validation.success) {
+        toast.error('Validation Error', {
+          description: validation.error.issues[0].message,
+        });
+        return;
+      }
+
+      try {
       const { data: existing } = await supabase
         .from('car_plates')
         .select('id, last_attempt_at, attempt_count, created_at')
@@ -168,34 +210,41 @@ export default function CarChecker() {
         return;
       }
 
-      const { error: insertError } = await supabase
-        .from('car_plates')
-        .insert({
+        const { error: insertError } = await supabase
+          .from('car_plates')
+          .insert({
+            plate_number: plateNumber,
+            added_by_telegram_id: user.id.toString(),
+            color: carColor || null,
+            brand: carBrand || null,
+            model: carModel || null,
+            description: carDescription || null,
+            photo_url: photoUrl,
+          });
+
+        if (insertError) throw insertError;
+
+        await supabase.from('plate_addition_attempts').insert({
           plate_number: plateNumber,
-          added_by_telegram_id: user.id.toString(),
-          color: carColor || null,
-          brand: carBrand || null,
-          model: carModel || null,
-          description: carDescription || null,
+          attempted_by_telegram_id: user.id.toString(),
+          success: true,
         });
 
-      if (insertError) throw insertError;
-
-      await supabase.from('plate_addition_attempts').insert({
-        plate_number: plateNumber,
-        attempted_by_telegram_id: user.id.toString(),
-        success: true,
-      });
-
-      toast.success('Plate Added Successfully');
-      setIsSheetOpen(false);
-      setNewPlate('');
-      setCarColor('');
-      setCarBrand('');
-      setCarModel('');
-      setCarDescription('');
+        toast.success('Plate Added Successfully');
+        setIsSheetOpen(false);
+        setNewPlate('');
+        setCarColor('');
+        setCarBrand('');
+        setCarModel('');
+        setCarDescription('');
+        setPhotoFile(null);
+        setPhotoPreview(null);
+      } catch (error) {
+        console.error('Error adding plate:', error);
+        toast.error('Error Adding Plate');
+      }
     } catch (error) {
-      console.error('Error adding plate:', error);
+      console.error('Error:', error);
       toast.error('Error Adding Plate');
     } finally {
       setIsLoading(false);
@@ -315,6 +364,48 @@ export default function CarChecker() {
                   maxLength={500}
                   rows={4}
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="photo">Photo (optional)</Label>
+                <div className="mt-2">
+                  {photoPreview ? (
+                    <div className="relative">
+                      <img 
+                        src={photoPreview} 
+                        alt="Preview" 
+                        className="w-full h-48 object-cover rounded-lg"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          setPhotoFile(null);
+                          setPhotoPreview(null);
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">Click to upload photo</p>
+                        <p className="text-xs text-muted-foreground">Max 5MB</p>
+                      </div>
+                      <input
+                        id="photo"
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
 
               <Button
