@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ArrowLeft, Download, Plus, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Plus, Loader2, Trash2, Edit, Upload, X } from 'lucide-react';
 import { useTelegram } from '@/contexts/TelegramContext';
 import { useNavigate } from 'react-router-dom';
 import { useUserAccess } from '@/hooks/useUserAccess';
@@ -10,6 +10,9 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface CarPlate {
   id: string;
@@ -18,6 +21,7 @@ interface CarPlate {
   color: string | null;
   brand: string | null;
   model: string | null;
+  photo_url: string | null;
   added_by_telegram_id: string;
   created_at: string;
   last_attempt_at: string | null;
@@ -35,6 +39,14 @@ export default function PlatesList() {
   const [selectedPeriod, setSelectedPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [selectedPlate, setSelectedPlate] = useState<CarPlate | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editColor, setEditColor] = useState('');
+  const [editBrand, setEditBrand] = useState('');
+  const [editModel, setEditModel] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const loadPlates = async () => {
     try {
@@ -156,6 +168,115 @@ export default function PlatesList() {
           return true;
       }
     });
+  };
+
+  const handleEditPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Photo too large', { description: 'Maximum size is 5MB' });
+        return;
+      }
+      setEditPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleStartEdit = () => {
+    if (!selectedPlate) return;
+    setEditColor(selectedPlate.color || '');
+    setEditBrand(selectedPlate.brand || '');
+    setEditModel(selectedPlate.model || '');
+    setEditDescription(selectedPlate.description || '');
+    setEditPhotoPreview(selectedPlate.photo_url);
+    setIsEditMode(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditColor('');
+    setEditBrand('');
+    setEditModel('');
+    setEditDescription('');
+    setEditPhotoFile(null);
+    setEditPhotoPreview(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedPlate || !user) return;
+    
+    setIsSaving(true);
+    try {
+      let photoUrl = selectedPlate.photo_url;
+
+      // Upload new photo if provided
+      if (editPhotoFile) {
+        const fileExt = editPhotoFile.name.split('.').pop();
+        const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('car-photos')
+          .upload(filePath, editPhotoFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('car-photos')
+          .getPublicUrl(filePath);
+
+        photoUrl = publicUrl;
+
+        // Delete old photo if exists
+        if (selectedPlate.photo_url) {
+          const oldPath = selectedPlate.photo_url.split('/car-photos/')[1];
+          if (oldPath) {
+            await supabase.storage.from('car-photos').remove([oldPath]);
+          }
+        }
+      } else if (editPhotoPreview === null && selectedPlate.photo_url) {
+        // User removed the photo
+        const oldPath = selectedPlate.photo_url.split('/car-photos/')[1];
+        if (oldPath) {
+          await supabase.storage.from('car-photos').remove([oldPath]);
+        }
+        photoUrl = null;
+      }
+
+      const { error } = await supabase
+        .from('car_plates')
+        .update({
+          color: editColor || null,
+          brand: editBrand || null,
+          model: editModel || null,
+          description: editDescription || null,
+          photo_url: photoUrl,
+        })
+        .eq('id', selectedPlate.id);
+
+      if (error) throw error;
+
+      toast.success('Plate updated successfully');
+      setIsEditMode(false);
+      setEditPhotoFile(null);
+      setEditPhotoPreview(null);
+      await loadPlates();
+      
+      // Update selected plate with new data
+      const updatedPlate = plates.find(p => p.id === selectedPlate.id);
+      if (updatedPlate) {
+        setSelectedPlate(updatedPlate);
+      }
+    } catch (error) {
+      console.error('Error updating plate:', error);
+      toast.error('Error updating plate');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleExportPlates = async () => {
@@ -377,13 +498,32 @@ export default function PlatesList() {
           </div>
         </main>
 
-        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="max-w-md">
+        <Dialog open={isDetailsOpen} onOpenChange={(open) => {
+          setIsDetailsOpen(open);
+          if (!open) {
+            handleCancelEdit();
+          }
+        }}>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Vehicle Details</DialogTitle>
-              <DialogDescription>
-                Additional information about this vehicle
-              </DialogDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle>Vehicle Details</DialogTitle>
+                  <DialogDescription>
+                    {isEditMode ? 'Edit vehicle information' : 'Additional information about this vehicle'}
+                  </DialogDescription>
+                </div>
+                {selectedPlate && canDeletePlate(selectedPlate) && !isEditMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleStartEdit}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             </DialogHeader>
             
             {selectedPlate && (
@@ -402,61 +542,188 @@ export default function PlatesList() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  {selectedPlate.color && (
-                    <div className="border-b pb-2">
-                      <span className="text-sm text-muted-foreground">Color:</span>
-                      <p className="text-base font-medium">{selectedPlate.color}</p>
+                {isEditMode ? (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-color">Car Color</Label>
+                      <Input
+                        id="edit-color"
+                        placeholder="e.g., Black, White, Red"
+                        value={editColor}
+                        onChange={(e) => setEditColor(e.target.value)}
+                        maxLength={50}
+                      />
                     </div>
-                  )}
-                  
-                  {selectedPlate.brand && (
-                    <div className="border-b pb-2">
-                      <span className="text-sm text-muted-foreground">Brand:</span>
-                      <p className="text-base font-medium">{selectedPlate.brand}</p>
-                    </div>
-                  )}
-                  
-                  {selectedPlate.model && (
-                    <div className="border-b pb-2">
-                      <span className="text-sm text-muted-foreground">Model:</span>
-                      <p className="text-base font-medium">{selectedPlate.model}</p>
-                    </div>
-                  )}
-                  
-                  {selectedPlate.description && (
-                    <div className="border-b pb-2">
-                      <span className="text-sm text-muted-foreground">Additional Notes:</span>
-                      <p className="text-base">{selectedPlate.description}</p>
-                    </div>
-                  )}
 
-                  {!selectedPlate.color && !selectedPlate.brand && !selectedPlate.model && !selectedPlate.description && (
-                    <div className="text-center py-4 text-muted-foreground">
-                      No additional details available for this vehicle
+                    <div>
+                      <Label htmlFor="edit-brand">Brand</Label>
+                      <Input
+                        id="edit-brand"
+                        placeholder="e.g., BMW, Toyota, Mercedes"
+                        value={editBrand}
+                        onChange={(e) => setEditBrand(e.target.value)}
+                        maxLength={100}
+                      />
                     </div>
-                  )}
-                </div>
 
-                <div className="mt-4 pt-4 border-t space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Added:</span>
-                    <span className="font-medium">
-                      {new Date(selectedPlate.created_at).toLocaleString('en-US', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                      })}
-                    </span>
+                    <div>
+                      <Label htmlFor="edit-model">Model</Label>
+                      <Input
+                        id="edit-model"
+                        placeholder="e.g., 3 Series, Camry, E-Class"
+                        value={editModel}
+                        onChange={(e) => setEditModel(e.target.value)}
+                        maxLength={100}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-description">Additional Comment</Label>
+                      <Textarea
+                        id="edit-description"
+                        placeholder="Any additional notes about this vehicle..."
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        maxLength={500}
+                        rows={4}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-photo">Photo</Label>
+                      <div className="mt-2">
+                        {editPhotoPreview ? (
+                          <div className="relative">
+                            <img 
+                              src={editPhotoPreview} 
+                              alt="Preview" 
+                              className="w-full h-48 object-cover rounded-lg"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-2 right-2"
+                              onClick={() => {
+                                setEditPhotoFile(null);
+                                setEditPhotoPreview(null);
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                              <p className="text-sm text-muted-foreground">Click to upload photo</p>
+                              <p className="text-xs text-muted-foreground">Max 5MB</p>
+                            </div>
+                            <input
+                              id="edit-photo"
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={handleEditPhotoChange}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-4">
+                      <Button
+                        onClick={handleSaveEdit}
+                        disabled={isSaving}
+                        className="flex-1 bg-[#0052CC] hover:bg-[#0747A6] text-white"
+                      >
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save Changes'
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleCancelEdit}
+                        disabled={isSaving}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Attempts:</span>
-                    <span className="font-bold text-red-600">{selectedPlate.attempt_count}</span>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    {selectedPlate.photo_url && (
+                      <div className="mb-4">
+                        <img 
+                          src={selectedPlate.photo_url} 
+                          alt="Vehicle" 
+                          className="w-full h-64 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {selectedPlate.color && (
+                        <div className="border-b pb-2">
+                          <span className="text-sm text-muted-foreground">Color:</span>
+                          <p className="text-base font-medium">{selectedPlate.color}</p>
+                        </div>
+                      )}
+                      
+                      {selectedPlate.brand && (
+                        <div className="border-b pb-2">
+                          <span className="text-sm text-muted-foreground">Brand:</span>
+                          <p className="text-base font-medium">{selectedPlate.brand}</p>
+                        </div>
+                      )}
+                      
+                      {selectedPlate.model && (
+                        <div className="border-b pb-2">
+                          <span className="text-sm text-muted-foreground">Model:</span>
+                          <p className="text-base font-medium">{selectedPlate.model}</p>
+                        </div>
+                      )}
+                      
+                      {selectedPlate.description && (
+                        <div className="border-b pb-2">
+                          <span className="text-sm text-muted-foreground">Additional Notes:</span>
+                          <p className="text-base">{selectedPlate.description}</p>
+                        </div>
+                      )}
+
+                      {!selectedPlate.color && !selectedPlate.brand && !selectedPlate.model && !selectedPlate.description && !selectedPlate.photo_url && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          No additional details available for this vehicle
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Added:</span>
+                        <span className="font-medium">
+                          {new Date(selectedPlate.created_at).toLocaleString('en-US', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Attempts:</span>
+                        <span className="font-bold text-red-600">{selectedPlate.attempt_count}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </DialogContent>

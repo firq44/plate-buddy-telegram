@@ -21,6 +21,9 @@ export const plateSchema = z.object({
   description: z.string()
     .trim()
     .max(500, 'Description too long')
+    .optional(),
+  photo_url: z.string()
+    .url('Invalid photo URL')
     .optional()
 });
 
