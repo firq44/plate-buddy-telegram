@@ -25,7 +25,6 @@ export const plateSchema = z.object({
   photo_url: z.string()
     .url('Invalid photo URL')
     .optional()
-    .nullable()
 });
 
 export const userSchema = z.object({
