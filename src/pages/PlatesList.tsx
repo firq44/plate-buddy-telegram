@@ -49,7 +49,7 @@ export default function PlatesList() {
   const [isSaving, setIsSaving] = useState(false);
   const [isIncrementingAttempt, setIsIncrementingAttempt] = useState(false);
   const [isAttemptsListOpen, setIsAttemptsListOpen] = useState(false);
-  const [attemptsList, setAttemptsList] = useState<{ id: string; attempted_at: string; attempted_by_telegram_id: string }[]>([]);
+  const [attemptsList, setAttemptsList] = useState<{ id: string; attempted_at: string; attempted_by_telegram_id: string; success: boolean }[]>([]);
   const [isLoadingAttempts, setIsLoadingAttempts] = useState(false);
 
   const loadPlates = async () => {
@@ -331,7 +331,7 @@ export default function PlatesList() {
     try {
       const { data, error } = await supabase
         .from('plate_addition_attempts')
-        .select('id, attempted_at, attempted_by_telegram_id')
+        .select('id, attempted_at, attempted_by_telegram_id, success')
         .eq('plate_number', selectedPlate.plate_number)
         .order('attempted_at', { ascending: false });
 
@@ -884,7 +884,12 @@ export default function PlatesList() {
                 <div className="space-y-2">
                   {attemptsList.map((attempt, index) => (
                     <div key={attempt.id} className="flex justify-between items-center p-2 bg-muted rounded-lg">
-                      <span className="text-sm font-medium">#{attemptsList.length - index}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">#{attemptsList.length - index}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded ${attempt.success ? 'bg-green-500/20 text-green-600' : 'bg-yellow-500/20 text-yellow-600'}`}>
+                          {attempt.success ? 'Added' : 'Attempt'}
+                        </span>
+                      </div>
                       <span className="text-sm">
                         {new Date(attempt.attempted_at).toLocaleString('en-US', {
                           day: '2-digit',
