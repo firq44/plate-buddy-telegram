@@ -9,19 +9,23 @@ export const plateSchema = z.object({
   color: z.string()
     .trim()
     .max(50, 'Color too long')
-    .optional(),
+    .optional()
+    .nullable(),
   brand: z.string()
     .trim()
     .max(100, 'Brand too long')
-    .optional(),
+    .optional()
+    .nullable(),
   model: z.string()
     .trim()
     .max(100, 'Model too long')
-    .optional(),
+    .optional()
+    .nullable(),
   description: z.string()
     .trim()
     .max(500, 'Description too long')
-    .optional(),
+    .optional()
+    .nullable(),
   photo_url: z.string()
     .url('Invalid photo URL')
     .optional()
