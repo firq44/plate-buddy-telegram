@@ -25,24 +25,25 @@ export const AccessRequest = () => {
 
       const validation = accessRequestSchema.safeParse(requestData);
       if (!validation.success) {
-        toast.error('Validation error', {
+        toast.error('Ошибка валидации', {
           description: validation.error.issues[0].message,
         });
         return;
       }
 
-      // Use edge function to create access request (bypasses RLS issues)
-      const { data, error } = await supabase.functions.invoke('create-access-request', {
-        body: {
-          telegramId: validation.data.telegram_id,
-          username: validation.data.username,
-          firstName: validation.data.first_name,
-        },
-      });
+      // Всегда создаём новый запрос доступа
+      const { error } = await supabase
+        .from('access_requests')
+        .insert({
+          telegram_id: validation.data.telegram_id,
+          username: validation.data.username || null,
+          first_name: validation.data.first_name || null,
+          status: 'pending',
+        });
 
       if (error) throw error;
 
-      // Send admin notifications
+      // Отправляем уведомления админам
       try {
         await supabase.functions.invoke('notify-admin-new-request', {
           body: {
@@ -53,15 +54,16 @@ export const AccessRequest = () => {
         });
       } catch (notifyError) {
         console.error('Failed to send admin notifications:', notifyError);
+        // Не прерываем процесс, если уведомления не отправились
       }
 
-      toast.success('Request sent', {
-        description: 'Administrator will review your request',
+      toast.success('Запрос отправлен', {
+        description: 'Администратор рассмотрит ваш запрос',
       });
     } catch (error: any) {
       console.error('Error requesting access:', error);
-      toast.error('Error', {
-        description: error.message || 'Failed to send request',
+      toast.error('Ошибка', {
+        description: error.message || 'Не удалось отправить запрос',
       });
     } finally {
       setIsSubmitting(false);
@@ -72,9 +74,9 @@ export const AccessRequest = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Access Request</CardTitle>
+          <CardTitle>Запрос доступа</CardTitle>
           <CardDescription>
-            You need administrator approval to use this application
+            Для использования приложения необходимо получить доступ от администратора
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -92,7 +94,7 @@ export const AccessRequest = () => {
               )}
               {user.first_name && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Name:</span>
+                  <span className="text-muted-foreground">Имя:</span>
                   <span className="font-medium">{user.first_name}</span>
                 </div>
               )}
@@ -104,7 +106,7 @@ export const AccessRequest = () => {
             className="w-full"
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Request Access
+            Запросить доступ
           </Button>
         </CardContent>
       </Card>

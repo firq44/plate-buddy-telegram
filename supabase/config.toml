@@ -2,9 +2,3 @@ project_id = "ozlqjipdcmxeryaczckc"
 
 [functions.telegram-auth]
 verify_jwt = false
-
-[functions.create-access-request]
-verify_jwt = false
-
-[functions.notify-admin-new-request]
-verify_jwt = false
