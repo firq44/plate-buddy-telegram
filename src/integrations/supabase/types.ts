@@ -97,6 +97,7 @@ export type Database = {
       }
       plate_addition_attempts: {
         Row: {
+          action_type: string
           attempted_at: string
           attempted_by_telegram_id: string
           id: string
@@ -104,6 +105,7 @@ export type Database = {
           success: boolean
         }
         Insert: {
+          action_type?: string
           attempted_at?: string
           attempted_by_telegram_id: string
           id?: string
@@ -111,6 +113,7 @@ export type Database = {
           success?: boolean
         }
         Update: {
+          action_type?: string
           attempted_at?: string
           attempted_by_telegram_id?: string
           id?: string
