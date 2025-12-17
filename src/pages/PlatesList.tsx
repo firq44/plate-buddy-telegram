@@ -49,7 +49,7 @@ export default function PlatesList() {
   const [isSaving, setIsSaving] = useState(false);
   const [isIncrementingAttempt, setIsIncrementingAttempt] = useState(false);
   const [isAttemptsListOpen, setIsAttemptsListOpen] = useState(false);
-  const [attemptsList, setAttemptsList] = useState<{ id: string; attempted_at: string; attempted_by_telegram_id: string; success: boolean }[]>([]);
+  const [attemptsList, setAttemptsList] = useState<{ id: string; attempted_at: string; attempted_by_telegram_id: string; action_type: string }[]>([]);
   const [isLoadingAttempts, setIsLoadingAttempts] = useState(false);
 
   const loadPlates = async () => {
@@ -306,6 +306,7 @@ export default function PlatesList() {
           plate_number: selectedPlate.plate_number,
           attempted_by_telegram_id: user.id.toString(),
           success: false,
+          action_type: 'increment',
         });
 
       toast.success('Attempt count updated');
@@ -331,7 +332,7 @@ export default function PlatesList() {
     try {
       const { data, error } = await supabase
         .from('plate_addition_attempts')
-        .select('id, attempted_at, attempted_by_telegram_id, success')
+        .select('id, attempted_at, attempted_by_telegram_id, action_type')
         .eq('plate_number', selectedPlate.plate_number)
         .order('attempted_at', { ascending: false });
 
@@ -360,6 +361,16 @@ export default function PlatesList() {
         .eq('id', selectedPlate.id);
 
       if (error) throw error;
+
+      // Record the decrement in plate_addition_attempts
+      await supabase
+        .from('plate_addition_attempts')
+        .insert({
+          plate_number: selectedPlate.plate_number,
+          attempted_by_telegram_id: user.id.toString(),
+          success: false,
+          action_type: 'decrement',
+        });
 
       toast.success('Attempt count updated');
       await loadPlates();
@@ -882,26 +893,48 @@ export default function PlatesList() {
                 <p className="text-muted-foreground text-center py-4">No attempts recorded</p>
               ) : (
                 <div className="space-y-2">
-                  {attemptsList.map((attempt, index) => (
-                    <div key={attempt.id} className="flex justify-between items-center p-2 bg-muted rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">#{attemptsList.length - index}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${attempt.success ? 'bg-green-500/20 text-green-600' : 'bg-yellow-500/20 text-yellow-600'}`}>
-                          {attempt.success ? 'Added' : 'Attempt'}
+                  {attemptsList.map((attempt, index) => {
+                    const getActionStyle = () => {
+                      switch (attempt.action_type) {
+                        case 'added':
+                          return 'bg-green-500/20 text-green-600';
+                        case 'decrement':
+                          return 'bg-red-500/20 text-red-600';
+                        default:
+                          return 'bg-yellow-500/20 text-yellow-600';
+                      }
+                    };
+                    const getActionLabel = () => {
+                      switch (attempt.action_type) {
+                        case 'added':
+                          return 'Added';
+                        case 'decrement':
+                          return '-1';
+                        default:
+                          return '+1';
+                      }
+                    };
+                    return (
+                      <div key={attempt.id} className="flex justify-between items-center p-2 bg-muted rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">#{attemptsList.length - index}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${getActionStyle()}`}>
+                            {getActionLabel()}
+                          </span>
+                        </div>
+                        <span className="text-sm">
+                          {new Date(attempt.attempted_at).toLocaleString('en-US', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })}
                         </span>
                       </div>
-                      <span className="text-sm">
-                        {new Date(attempt.attempted_at).toLocaleString('en-US', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: false
-                        })}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
