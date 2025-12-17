@@ -403,13 +403,9 @@ export default function Admin() {
 
       if (requestsError) throw requestsError;
 
-      // Удаляем запись пользователя - так он сможет повторно запросить доступ
-      const { error: userDeleteError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
+      // Не удаляем запись пользователя, чтобы корректно отзывался доступ
+      // (useUserAccess разлогинивает пользователя, когда у него есть запись в users, но нет ролей)
 
-      if (userDeleteError) throw userDeleteError;
 
       toast.success('Пользователь полностью удален');
       loadData();

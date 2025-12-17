@@ -93,16 +93,21 @@ export const useUserAccess = () => {
 
           if (rolesError) throw rolesError;
 
-          // User exists and has roles - they have access
-          if (rolesData && rolesData.length > 0) {
-            const hasAdminRole = rolesData.some(r => r.role === 'admin');
-            setIsAdmin(hasAdminRole);
-            setStatus('approved');
+          // User exists but has NO roles - they were removed/deleted
+          if (!rolesData || rolesData.length === 0) {
+            console.log('User has no roles, logging out...');
+            // Sign out the user to clear their session
+            await supabase.auth.signOut();
+            setIsAdmin(false);
+            setStatus('no-request');
             return;
           }
-          
-          // User exists but has NO roles - check for pending request
-          // DON'T sign out - keep session active so realtime updates work
+
+          // User has at least one role - they have access
+          const hasAdminRole = rolesData.some(r => r.role === 'admin');
+          setIsAdmin(hasAdminRole);
+          setStatus('approved');
+          return;
         }
 
         // Check if there's a pending request
@@ -117,13 +122,11 @@ export const useUserAccess = () => {
         if (requestError) throw requestError;
 
         if (requestData) {
-          if (requestData.status === 'pending') {
-            setStatus('pending');
-          } else if (requestData.status === 'rejected') {
-            setStatus('rejected');
-          } else {
-            // 'approved' but no roles or no user record - need new request
+          // If request is "approved" but user record doesn't exist, treat as no access
+          if (requestData.status === 'approved') {
             setStatus('no-request');
+          } else {
+            setStatus(requestData.status as AccessStatus);
           }
         } else {
           setStatus('no-request');
