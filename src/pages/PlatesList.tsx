@@ -34,6 +34,7 @@ export default function PlatesList() {
   const navigate = useNavigate();
   const [plates, setPlates] = useState<CarPlate[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasUserRole, setHasUserRole] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [exportingCsv, setExportingCsv] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
@@ -68,7 +69,7 @@ export default function PlatesList() {
   };
 
   useEffect(() => {
-    const checkAdmin = async () => {
+    const checkRoles = async () => {
       if (!user) return;
 
       const { data: userData } = await supabase
@@ -82,14 +83,16 @@ export default function PlatesList() {
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userData.id)
-        .eq('role', 'admin')
-        .maybeSingle();
+        .eq('user_id', userData.id);
 
-      setIsAdmin(!!roleData);
+      const hasAdminRole = roleData?.some(r => r.role === 'admin') ?? false;
+      const hasUserRole = roleData?.some(r => r.role === 'user') ?? false;
+      
+      setIsAdmin(hasAdminRole);
+      setHasUserRole(hasUserRole);
     };
 
-    checkAdmin();
+    checkRoles();
     loadPlates();
 
     const channel = supabase
@@ -147,8 +150,9 @@ export default function PlatesList() {
     }
   };
 
-  const canDeletePlate = (plate: CarPlate) => {
-    return isAdmin || plate.added_by_telegram_id === user?.id.toString();
+  const canEditOrDeletePlate = () => {
+    // Any user with 'user' or 'admin' role can edit/delete any plate
+    return isAdmin || hasUserRole;
   };
 
   const filterPlatesByPeriod = (plates: CarPlate[], period: 'all' | 'today' | 'week' | 'month' = selectedPeriod) => {
@@ -542,7 +546,7 @@ export default function PlatesList() {
                                 <span className="text-lg font-bold text-black tracking-wider">{numbers}</span>
                               </div>
                             </div>
-                            {canDeletePlate(plate) && (
+                            {canEditOrDeletePlate() && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -622,7 +626,7 @@ export default function PlatesList() {
                     {isEditMode ? 'Edit vehicle information' : 'Additional information about this vehicle'}
                   </DialogDescription>
                 </div>
-                {selectedPlate && canDeletePlate(selectedPlate) && !isEditMode && (
+                {selectedPlate && canEditOrDeletePlate() && !isEditMode && (
                   <Button
                     variant="outline"
                     size="sm"
